@@ -1,0 +1,22 @@
+{
+  "name": "conventional-changelog-releaser",
+  "version": "0.0.1",
+  "description": "In construction",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slayerfat/conventional-changelog-releaser.git"
+  },
+  "author": "Alejandro Granadillo <slayerfat@gmail.com> (http://slayerfat.com.ve/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/slayerfat/conventional-changelog-releaser/issues"
+  },
+  "homepage": "https://github.com/slayerfat/conventional-changelog-releaser#readme",
+  "dependencies": {
+    "typescript": "^2.3.2"
+  }
+}
