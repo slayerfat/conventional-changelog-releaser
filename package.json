@@ -1,10 +1,12 @@
 {
   "name": "conventional-changelog-releaser",
   "version": "0.0.1",
-  "description": "In construction",
-  "main": "index.js",
+  "description": "Under construction",
+  "main": "./lib/main.js",
+  "types": "./lib/main.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -r ts-node/register test/**/*.ts",
+    "prepublish": "tsc"
   },
   "repository": {
     "type": "git",
@@ -16,7 +18,12 @@
     "url": "https://github.com/slayerfat/conventional-changelog-releaser/issues"
   },
   "homepage": "https://github.com/slayerfat/conventional-changelog-releaser#readme",
-  "dependencies": {
+  "devDependencies": {
+    "@types/chai": "^3.5.2",
+    "@types/mocha": "^2.2.41",
+    "chai": "^3.5.0",
+    "mocha": "^3.3.0",
+    "ts-node": "^3.0.2",
     "typescript": "^2.3.2"
   }
 }
