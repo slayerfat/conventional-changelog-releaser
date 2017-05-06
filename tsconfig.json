@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node",
+    "target": "es5",
     "sourceMap": true,
     "declaration": true,
-    "outDir": "lib/"
+    "outDir": "lib/",
+    // fixes TS2693 error
+    "lib": [
+      "es6"
+    ]
   },
   "files": [
     "src/main.ts"
