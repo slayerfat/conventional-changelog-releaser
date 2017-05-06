@@ -5,8 +5,11 @@
   "main": "./lib/main.js",
   "types": "./lib/main.d.ts",
   "scripts": {
-    "test": "mocha -r ts-node/register test/**/*.ts",
-    "prepublish": "tsc"
+    "commitmsg": "validate-commit-msg",
+    "debug": "DEBUG=* node --require pretty-error/start lib/main.js",
+    "prepublish": "tsc",
+    "test": "mocha -r ts-node/register test/**/*.spec.ts",
+    "tslint": "tslint -c tslint.json src/** --fix"
   },
   "repository": {
     "type": "git",
@@ -20,10 +23,28 @@
   "homepage": "https://github.com/slayerfat/conventional-changelog-releaser#readme",
   "devDependencies": {
     "@types/chai": "^3.5.2",
+    "@types/debug": "0.0.29",
+    "@types/es6-promise": "0.0.32",
+    "@types/inquirer": "0.0.34",
+    "@types/meow": "^3.6.2",
     "@types/mocha": "^2.2.41",
+    "@types/node": "^7.0.16",
+    "@types/promise": "^7.1.30",
+    "@types/winston": "^2.3.1",
     "chai": "^3.5.0",
+    "child-process-promise": "^2.2.1",
+    "husky": "^0.13.3",
     "mocha": "^3.3.0",
+    "pretty-error": "^2.1.0",
     "ts-node": "^3.0.2",
-    "typescript": "^2.3.2"
+    "tslint": "^5.1.0",
+    "typescript": "^2.3.2",
+    "validate-commit-msg": "^2.12.1"
+  },
+  "dependencies": {
+    "debug": "^2.6.6",
+    "inquirer": "^3.0.6",
+    "meow": "^3.7.0",
+    "winston": "^2.3.1"
   }
 }
