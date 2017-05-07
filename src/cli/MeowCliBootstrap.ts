@@ -26,11 +26,11 @@ export class MeowCliBootstrap implements ICliBootstrap {
       $ ccr <input>
 
     Options
-      -p,  --pre        Bumps as a pre-release: 1.0.1-0.
-      -f,  --forced     Tries to bump without a tag present.
-      -d,  --dry-run    Executes a dry run of the script.
-      -nc, --no-commit  Does not commits the bump in version control.
-      -nt, --no-tag     Does not tag in version control.
+      -p,  --pre        Bumps as a pre-release, example: v1.0.1-0.
+      -P,  --prefix     The tag prefix, defaults to 'v', example: v0.0.1.
+                        If changed, all previous tags with prefixes will be considered invalid.
+      -f,  --forced     Tries to bump without significant changes in the current repository.
+      -nc, --no-commit  Does not commit the bump in version control.
       -h,  --help       This help message.
 
     Examples
@@ -41,14 +41,15 @@ export class MeowCliBootstrap implements ICliBootstrap {
         Bump to v1.1.2, no commits made.
 
       Assuming the current branch is develop and no tag is present with no new features:
-      $ ccp
+      $ ccr
         Bump to v0.0.1-0 completed.
 
       Assuming the current branch is develop and tag 2.0.0 is present with non features commits:
-      $ ccp
+      $ ccr
         Bump to v2.0.1-0 completed.
   `;
 
+  // noinspection TsLint
   /**
    * The options used by meow to parse the flags and other elements.
    *
@@ -57,13 +58,16 @@ export class MeowCliBootstrap implements ICliBootstrap {
    * @private
    */
   private minimistOptions: minimist.Opts = {
-    alias: {
+    alias:   {
       d:  'dry',
       f:  'forced',
       h:  'help',
       nc: '-no-commit',
-      nt: '-no-tag',
       p:  'pre',
+      P:  'prefix',
+    },
+    default: {
+      prefix: 'v',
     },
   };
 
