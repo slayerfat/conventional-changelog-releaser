@@ -16,6 +16,13 @@ export interface IConfig {
   getPackageJson(): IPkgUpResultObject;
 
   /**
+   * Checks if the stored package.json object exists.
+   *
+   * @return {IPkgUpResultObject}
+   */
+  hasPackageJson(): boolean;
+
+  /**
    * Deletes the stored package.json object.
    *
    * @return {void}
@@ -35,4 +42,18 @@ export interface IConfig {
    * @return {string}
    */
   getCurrentSemVer(): string;
+
+  /**
+   * Checks if the current stored semantic version exists.
+   *
+   * @return {IPkgUpResultObject}
+   */
+  hasCurrentSemVer(): boolean;
+
+  /**
+   * Deletes the current stored semantic version.
+   *
+   * @return {void}
+   */
+  deleteCurrentSemVer(): void;
 }

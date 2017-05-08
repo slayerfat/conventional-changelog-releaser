@@ -15,6 +15,10 @@ export class ConfigStoreConfig implements IConfig {
     return this.config.get('packageJson');
   }
 
+  public hasPackageJson(): boolean {
+    return this.config.has('packageJson');
+  }
+
   public deletePackageJson() {
     return this.config.delete('packageJson');
   }
@@ -25,5 +29,13 @@ export class ConfigStoreConfig implements IConfig {
 
   public getCurrentSemVer(): string {
     return this.config.get('currentSemVer');
+  }
+
+  public hasCurrentSemVer(): boolean {
+    return this.config.has('currentSemVer');
+  }
+
+  public deleteCurrentSemVer(): void {
+    return this.config.delete('currentSemVer');
   }
 }

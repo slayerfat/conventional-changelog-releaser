@@ -4,7 +4,7 @@ import {ICliBootstrap} from './cli/ICliBootstrap';
 import {IConfig} from './config/IConfig';
 import {ILogger} from './debug/ILogger';
 import {IPkgUpResultObject} from './config/IPkgResultObject';
-import {prompt, Questions} from 'inquirer';
+import {prompt, Question, Questions} from 'inquirer';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 
@@ -121,43 +121,13 @@ export class Releaser {
    * @return void
    */
   public init(): void {
-    this.startConfigurationFiles()
-      // .then(() => this.getBranchStatus())
-      // .then(status => {
-      //   switch (status) {
-      //     case BRANCH_STATUS.PRISTINE:
-      //       this.logger.debug('pristine case');
-      //
-      //       if (!this.isForcedMode()) {
-      //         this.logger.debug('not forced');
-      //
-      //         throw new Error(ERRORS.noNewCommit);
-      //       }
-      //
-      //       this.bump();
-      //
-      //       break;
-      //     case BRANCH_STATUS.NOT_PRISTINE:
-      //       this.bump();
-      //
-      //       break;
-      //     case BRANCH_STATUS.NO_TAG:
-      //       this.logger.debug('no tag case');
-      //
-      //       return this.askUserToCreateNewTag()
-      //         .then(answer => {
-      //           if (answer === true) {
-      //             this.bump();
-      //
-      //             return Promise.resolve(true);
-      //           }
-      //
-      //           return Promise.reject(new UserAbortedError());
-      //         });
-      //     default:
-      //       throw new Error('Unknown branch status.');
-      //   }
-      // })
+    this.setPackageJsonInConfig()
+      .then(() => this.setLatestSemVerInConfig())
+      .then(() => {
+        if (this.config.hasPackageJson() || this.config.hasCurrentSemVer()) {
+          this.bump();
+        }
+      })
       .then(bumpResult => {
         this.logger.debug('init completed');
         this.logger.debug(bumpResult);
@@ -166,8 +136,6 @@ export class Releaser {
         this.logger.debug('errors in init!');
         if (reason instanceof UserAbortedError) {
           return this.logger.debug('user aborted.');
-        } else if (reason === ERRORS.exhaustedDir) {
-          return this.logger.error(`Can't continue: ${ERRORS.exhaustedDir}`);
         }
 
         throw reason;
@@ -220,34 +188,39 @@ export class Releaser {
   }
 
   /**
-   * Prompts a new yes or no question to the user.
-   * TODO: refactor as a helper
+   * Prompts a new question to the user.
    *
-   * @return {Promise<boolean>}
+   * @param {string=} message The prompt message.
+   * @param {string=} name The prompt name or identifier (used in answer object)
+   * @param {string=} type The type of prompt to make
+   * @return {Promise<T | boolean>}
    */
-  private askUserToCreateNewTag(): Promise<boolean> {
-    const question = {
-      default: false,
-      message: 'No tags found, continue bump?',
-      name:    'continue',
-      type:    'confirm',
-    };
-
+  private promptUser<T>({
+    message = 'Continue?',
+    name = 'continue',
+    type = 'confirm',
+  }: Question): Promise<T> {
     return Promise.resolve()
-      .then(() => prompt(question))
-      .then(answer => Promise.resolve(answer.continue));
+      .then(() => prompt({message, name, type, default: false}))
+      .then(answer => Promise.resolve(answer[name]));
   }
 
   /**
-   * Sets the necessary config files.
+   * Sets a valid package.json file in config.
    *
    * @return {Promise<void>}
    */
-  private startConfigurationFiles(): Promise<void> {
+  private setPackageJsonInConfig(): Promise<void> {
     return this.findPackageJsonFile()
       .then(file => this.askUserIfPackageJsonFileIsCorrect(file))
       .then(answer => this.handleIsPackageJsonFileIsCorrectResponse(answer))
-      .then(() => this.setLatestSemVerInConfig());
+      .catch(reason => {
+        if (reason === ERRORS.exhaustedDir) {
+          return this.logger.debug(reason);
+        }
+
+        throw reason;
+      });
   }
 
   /**
@@ -373,28 +346,20 @@ export class Releaser {
   }
 
   /**
-   * Creates the first tag as 0.0.1 in the repository.
-   *
-   * @return {Promise<any>}
-   */
-  private createFirstTag(): Promise<void> {
-    return this.createTag('0.0.1', this.cli.getFlag('prefix'));
-  }
-
-  /**
    * Creates a new tag with the given label and prefix.
    *
    * @param {string} label The tag label.
-   * @param {string=} prefix The tag prefix, ex: v0.0.1.
    * @return {Promise<void>}
    */
-  private createTag(label: string, prefix?: string): Promise<void> {
-    const tagLabel = prefix ? prefix.concat(label) : label;
-    this.logger.debug(`creating new tag as ${tagLabel}`);
+  private createTag(label: string): Promise<void> {
+    this.logger.debug(`creating new tag as ${label}`);
 
-    return this.exec(`git tag ${tagLabel}`);
+    return this.exec(`git tag ${label}`);
   }
 
+  /**
+   * TODO: implement bump
+   */
   private bump() {
     this.logger.debug('bump!');
   }
@@ -407,7 +372,19 @@ export class Releaser {
   private setLatestSemVerInConfig(): Promise<void> {
     return this.getAllSemVerTags().then(tags => {
       if (tags.length === 0) {
-        return Promise.reject(ERRORS.noTag);
+        this.config.deleteCurrentSemVer();
+        return this.promptUser<boolean>({message: 'No tags found, continue?'})
+          .then(answer => {
+            if (answer === true) {
+              const label = this.cli.getFlag('prefix') ? 'v0.0.1' : '0.0.1';
+
+              return this.createTag(label)
+                .then(() => this.getHashFromTag(label))
+                .then(() => this.config.setCurrentSemVer(label));
+            }
+
+            return Promise.reject(new UserAbortedError());
+          });
       }
 
       const sorted = tags.sort(semver.rcompare);
