@@ -9,10 +9,11 @@ import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 
 const ERRORS = {
-  exhaustedDir: 'Exhausted all directories within repository.',
-  noNewCommit:  'No new commits since last tag, aborting.',
-  noPackage:    'No package.json found.',
-  noTag:        'No tags are found.',
+  exhaustedDir:   'Exhausted all directories within repository.',
+  invalidVersion: 'Version in selected package.json does not follow semver.',
+  noNewCommit:    'No new commits since last tag, aborting.',
+  noPackage:      'No package.json found.',
+  noTag:          'No tags are found.',
 };
 
 const enum BRANCH_STATUS {
@@ -264,6 +265,15 @@ export class Releaser {
         }
 
         return file;
+      })
+      .catch(err => {
+        if (err instanceof Error && /Invalid version:/.test(err.message)) {
+          return readPkgUp({cwd, normalize: false}).then((result): IPkgUpResultObject => {
+            throw new Error(`${ERRORS.invalidVersion} \n File: ${result.path} \n ${err.message}`);
+          });
+        }
+
+        throw err;
       });
   }
 
@@ -291,9 +301,7 @@ export class Releaser {
       .then(() => {
         switch (answer) {
           case 'Yes':
-            if (!semver.valid(this.config.getPackageJson().pkg.version)) {
-              throw new Error('Current version in package.json does not follow semver.');
-            }
+            //
             break;
           case 'No':
             const packageJson = this.config.getPackageJson();
@@ -413,14 +421,11 @@ export class Releaser {
    * @return {Promise<string[]>}
    */
   private getAllSemVerTags(): Promise<string[]> {
-    // https://github.com/benjamingr/RegExp.escape
-    const prefix = this.cli.getFlag('prefix').replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-
     /**
      * This regex matches tags with a valid semver.
      *
      * ^ asserts position at start of a line
-     * prefix? matches the 'variable prefix' literally (case sensitive)
+     * v? matches the 'variable prefix' literally (case sensitive)
      * \d+ matches a digit (equal to [0-9])
      * \. matches the character . literally (case sensitive)
      * \d+ matches a digit (equal to [0-9])
@@ -437,7 +442,7 @@ export class Releaser {
      *
      * @type {RegExp}
      */
-    const regex     = new RegExp(`^${prefix}?\\d+\\.\\d+\\.\\d+-?(?:\\d*|\\w*\\.\\d+)$`);
+    const regex     = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
     const validTags = [];
 
     return Promise.resolve()
