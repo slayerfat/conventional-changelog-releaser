@@ -26,12 +26,13 @@ export class MeowCliBootstrap implements ICliBootstrap {
       $ ccr <input>
 
     Options
-      -p,  --pre        Bumps as a pre-release, example: v1.0.1-0.
-      -i,  --identifier The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
-      -P,  --prefix     The tag prefix, adds 'v' before the tag, example: v0.0.1.
-      -f,  --forced     Tries to bump without significant changes in the current repository.
-      -c,  --commit     Commits the bump in version control, defaults to true.
-      -h,  --help       This help message.
+      -c,  --commit       Commits the bump in version control, defaults to true.
+      -f,  --forced       Tries to bump without significant changes in the current repository.
+      -h,  --help         This help message.
+      -i,  --identifier   The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
+      -n,  --npm-publish  Tries to publish the new version to npm.
+      -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
+      -P,  --prefix       The tag prefix, adds 'v' before the tag, example: v0.0.1.
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
@@ -68,10 +69,11 @@ export class MeowCliBootstrap implements ICliBootstrap {
       f: 'forced',
       h: 'help',
       i: 'identifier',
+      n: 'npm-publish',
       p: 'pre',
       P: 'prefix',
     },
-    boolean: ['prefix', 'commit'],
+    boolean: ['commit', 'npm-publish', 'prefix'],
     default: {
       commit: true,
       prefix: true,
