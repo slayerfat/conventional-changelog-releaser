@@ -70,4 +70,11 @@ export interface ICliBootstrap {
    * @return {boolean}
    */
   shouldCommit(): boolean;
+
+  /**
+   * Gets the reset flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isReset(): boolean;
 }

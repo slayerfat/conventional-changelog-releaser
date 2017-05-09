@@ -35,6 +35,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
       -r,  --release      The release type: major, minor, patch, etc. Ignored on auto-check.
+      -R,  --reset        Resets the internal configuration (stored package.json, git config, etc).
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
@@ -76,23 +77,26 @@ export class MeowCliBootstrap implements ICliBootstrap {
       p: 'pre',
       P: 'prefix',
       r: 'release',
+      R: 'reset',
     },
     boolean: [
       'auto',
       'commit',
-      'npm-publish',
-      'prefix',
       'dry',
       'forced',
       'npm-publish',
+      'npm-publish',
       'pre',
+      'prefix',
+      'reset',
     ],
     default: {
       auto:   true,
       commit: true,
       dry:    false,
-      prefix: true,
       forced: false,
+      prefix: true,
+      reset:  false,
     },
     string:  ['identifier', 'release'],
   };
@@ -124,6 +128,10 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public isForced(): boolean {
     return this.getFlag('forced');
+  }
+
+  public isReset(): boolean {
+    return this.getFlag('reset');
   }
 
   public getRelease(): string {
