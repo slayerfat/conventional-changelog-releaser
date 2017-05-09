@@ -51,6 +51,13 @@ export interface ICliBootstrap {
   isForced(): boolean;
 
   /**
+   * Gets the find json flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isFindJsonMode(): boolean;
+
+  /**
    * Gets the release type from the cli.
    *
    * @return {string}

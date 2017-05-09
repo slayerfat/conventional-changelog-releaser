@@ -143,8 +143,8 @@ export class Releaser {
     this.currentSearchPath = process.cwd();
 
     this.findBranchRootDir().then(results => this.repoRootPath = results);
-
     if (this.cli.isReset()) this.config.reset();
+    if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
   }
 
   /**
