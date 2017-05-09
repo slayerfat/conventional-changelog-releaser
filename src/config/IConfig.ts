@@ -30,6 +30,13 @@ export interface IConfig {
   deletePackageJson(): void;
 
   /**
+   * Updates the stored package.json version.
+   *
+   * @param {string} version
+   */
+  setPackageJsonVersion(version: string);
+
+  /**
    * Sets a valid semantic version value.
    *
    * @param {string} value
