@@ -26,13 +26,15 @@ export class MeowCliBootstrap implements ICliBootstrap {
       $ ccr <input>
 
     Options
+      -a,  --auto         Checks the commits and uses the appropriate bump type, defaults to true.
       -c,  --commit       Commits the bump in version control, defaults to true.
       -f,  --forced       Tries to bump without significant changes in the current repository.
       -h,  --help         This help message.
       -i,  --identifier   The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
       -n,  --npm-publish  Tries to publish the new version to npm.
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
-      -P,  --prefix       The tag prefix, adds 'v' before the tag, example: v0.0.1.
+      -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
+      -r,  --release      The release type: major, minor, patch, etc. Ignored on auto-check.
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
@@ -64,6 +66,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
    */
   private minimistOptions: minimist.Opts = {
     alias:   {
+      a: 'auto',
       c: 'commit',
       d: 'dry',
       f: 'forced',
@@ -72,11 +75,13 @@ export class MeowCliBootstrap implements ICliBootstrap {
       n: 'npm-publish',
       p: 'pre',
       P: 'prefix',
+      r: 'release',
     },
-    boolean: ['commit', 'npm-publish', 'prefix'],
+    boolean: ['auto', 'commit', 'npm-publish', 'prefix'],
     default: {
-      commit: true,
-      prefix: true,
+      auto: true,
+      commit:     true,
+      prefix:     true,
     },
   };
 

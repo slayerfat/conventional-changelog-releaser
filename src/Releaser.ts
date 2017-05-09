@@ -7,6 +7,7 @@ import {IPkgUpResultObject} from './config/IPkgResultObject';
 import {prompt, Question, Questions} from 'inquirer';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
+import {IBumpFinder} from './bumpFinder/IBumpFinder';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
@@ -125,8 +126,14 @@ export class Releaser {
    * @param {ICliBootstrap} cli The CLI wrapper.
    * @param {ILogger} logger A Logger implementation.
    * @param {IConfig} config A config implementation.
+   * @param {IBumpFinder} bumpFinder The implementation of a bumpFinder.
    */
-  constructor(private cli: ICliBootstrap, private logger: ILogger, private config: IConfig) {
+  constructor(
+    private cli: ICliBootstrap,
+    private logger: ILogger,
+    private config: IConfig,
+    private bumpFinder: IBumpFinder,
+  ) {
     this.cli.init();
     this.logger.debug('starting');
 
@@ -370,10 +377,9 @@ export class Releaser {
   /**
    * Bumps the current branch to the next semver number.
    *
-   * @param {boolean} checkBranchType Checks the branch name and assumes type of bump.
    * @return {Promise<void>}
    */
-  private bump(checkBranchType = false): Promise<void> {
+  private bump(): Promise<void> {
     return Promise.resolve()
       .then(() => {
         return this.isBranchPristine()
@@ -394,11 +400,10 @@ export class Releaser {
           return Promise.reject(ERRORS.noNewCommit);
         }
 
-        if (checkBranchType) {
-          // TODO branch type
-        }
+        const type = this.cli.getFlag('auto') ?
+          this.bumpFinder.getBumpType() : this.cli.getFlag('release');
 
-        const label = Releaser.incrementSemVer(this.config.getCurrentSemVer(), 'patch');
+        const label = this.constructNewLabel(this.config.getCurrentSemVer(), type);
 
         this.createTag(label)
           .then(() => this.config.setCurrentSemVer(label))
@@ -497,5 +502,18 @@ export class Releaser {
       const sorted = tags.sort(semver.rcompare);
       this.config.setCurrentSemVer(sorted[0]);
     });
+  }
+
+  /**
+   * Makes a new label from current one.
+   *
+   * @param {string} name The label name.
+   * @param {string} type The type to construct from (minor, major, etc).
+   * @return {string}
+   */
+  private constructNewLabel(name: string, type: string) {
+    const label = Releaser.incrementSemVer(name, type);
+
+    return this.cli.getFlag('prefix') ? 'v'.concat(label) : label;
   }
 }

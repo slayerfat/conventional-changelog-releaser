@@ -1,6 +1,6 @@
 {
   "name": "conventional-changelog-releaser",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Under construction",
   "main": "./lib/main.js",
   "types": "./lib/main.d.ts",
@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "configstore": "^3.0.0",
+    "conventional-recommended-bump": "^1.0.0",
     "debug": "^2.6.6",
     "inquirer": "^3.0.6",
     "meow": "^3.7.0",
