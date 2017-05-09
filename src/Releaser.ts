@@ -11,7 +11,6 @@ import {IBumpFinder} from './bumpFinder/IBumpFinder';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
-  invalidLabel:   'The specified label was not found in the repository.',
   invalidVersion: 'Version in selected package.json does not follow semver.',
   noNewCommit:    'No new commits since last tag, aborting.',
   noPackage:      'No package.json found.',
@@ -19,10 +18,12 @@ const ERRORS = {
 };
 
 const enum BRANCH_STATUS {
-  INVALID_TAG  = 1,
-  NO_TAG       = 2,
-  NOT_PRISTINE = 3,
-  PRISTINE     = 4,
+  FORCED_BUMP   = 1,
+  INVALID_LABEL = 2,
+  INVALID_TAG   = 3,
+  NO_TAG        = 4,
+  NOT_PRISTINE  = 5,
+  PRISTINE      = 6,
 }
 
 export class Releaser {
@@ -61,7 +62,7 @@ export class Releaser {
 
     const {stdout} = results;
 
-    if (!stdout) {
+    if (stdout === undefined || stdout === null) {
       throw new Error('The results must have the stdout property.');
     }
 
@@ -180,15 +181,56 @@ export class Releaser {
   private isBranchPristine(): Promise<boolean> {
     return this.isAnyTagPresent()
       .then(value => {
-        if (value === false) {
-          return Promise.reject(BRANCH_STATUS.NO_TAG);
-        }
-
-        return this.getHashFromTag(this.config.getCurrentSemVer());
+        if (value === false) return Promise.reject(BRANCH_STATUS.NO_TAG);
       })
+      .then(() => {
+        const currentTag = this.getCurrentTag();
+
+        return this.isTagPresent(currentTag)
+          .then((isTagPresent): Promise<string> => {
+            if (!isTagPresent) {
+              return this.promptUser({
+                message: `Tag ${currentTag} is not present in repository, continue?`,
+              }).then(answer => {
+                if (!answer) throw new UserAbortedError();
+
+                return this.createTag(currentTag)
+                  .then(() => {
+                    if (this.cli.shouldCommit() === true) {
+                      this.logger.info(`Forced bump to ${currentTag} completed.`);
+
+                      return;
+                    }
+
+                    this.logger.info(`Forced bump to ${currentTag} completed, no commits made.`);
+                  })
+                  .then(() => Promise.reject(BRANCH_STATUS.FORCED_BUMP));
+              });
+            }
+
+            return Promise.resolve(currentTag);
+          });
+      })
+      .then(currentTag => this.getHashFromTag(currentTag))
       .then(hash => this.exec(`git rev-list ${hash}..HEAD --count`))
       .then(Releaser.removeNewLine)
       .then(count => (parseInt(count, 10) === 0));
+  }
+
+  /**
+   * Gets the current tag from the config.
+   *
+   * @return {string}
+   */
+  private getCurrentTag(prefixed = this.cli.hasPrefix()): string {
+    if (this.config.hasPackageJson()) {
+      return prefixed ?
+        'v'.concat(this.config.getPackageJson().pkg.version) :
+        this.config.getPackageJson().pkg.version;
+    }
+
+    return prefixed ?
+      'v'.concat(this.config.getCurrentSemVer()) : this.config.getCurrentSemVer();
   }
 
   /**
@@ -329,7 +371,7 @@ export class Releaser {
       .then(Releaser.removeNewLine).catch(reason => {
         // tag label not found
         if (reason.code === 1) {
-          throw new Error(ERRORS.invalidLabel);
+          return Promise.reject(BRANCH_STATUS.INVALID_LABEL);
         }
 
         throw reason;
@@ -375,15 +417,13 @@ export class Releaser {
       .then(() => {
         return this.isBranchPristine()
           .catch(reason => {
-            if (reason === BRANCH_STATUS.NO_TAG) {
-              // no tag in this circumstance is valid
-              return Promise.resolve(false);
-            } else if (reason.message === ERRORS.invalidLabel) {
-              // package.json version is not tagged but valid.
-              return Promise.resolve(false);
+            switch (reason) {
+              case BRANCH_STATUS.NO_TAG:
+              case BRANCH_STATUS.INVALID_LABEL:
+                return Promise.resolve(false);
+              default:
+                throw reason;
             }
-
-            throw reason;
           });
       })
       .then(results => {
@@ -391,13 +431,16 @@ export class Releaser {
           return Promise.reject(ERRORS.noNewCommit);
         }
 
-        const type = this.cli.isAuto() ?
-          this.bumpFinder.getBumpType() : this.cli.getRelease();
+        const label = this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
 
-        const label = this.constructNewLabel(this.config.getCurrentSemVer(), type);
+        return this.createTag(label)
+          .then(() => {
+            if (this.config.hasPackageJson()) {
+              this.config.setPackageJsonVersion(label);
+            }
 
-        this.createTag(label)
-          .then(() => this.config.setCurrentSemVer(label))
+            this.config.setCurrentSemVer(label);
+          })
           .then(() => {
             if (this.cli.shouldCommit() === true) {
               this.logger.info(`Bump to ${label} completed.`);
@@ -407,6 +450,14 @@ export class Releaser {
 
             this.logger.info(`Bump to ${label} completed, no commits made.`);
           });
+      })
+      .catch(err => {
+        if (err === BRANCH_STATUS.FORCED_BUMP) {
+          // forced bump finishes the bump completely.
+          return;
+        }
+
+        throw err;
       });
   }
 
@@ -506,5 +557,38 @@ export class Releaser {
     const label = Releaser.incrementSemVer(name, type);
 
     return this.cli.hasPrefix() ? 'v'.concat(label) : label;
+  }
+
+  /**
+   * Checks if the given tag is present in the repository.
+   *
+   * @link http://stackoverflow.com/a/43156178
+   * @param label
+   * @return {Promise<any>}
+   */
+  private isTagPresent(label: string): Promise<boolean> {
+    return this.exec(`git tag -l ${label}`)
+      .then(Releaser.removeNewLine)
+      .then(value => (value.length > 0));
+  }
+
+  /**
+   * Gets the bump type (minor, major, etc).
+   *
+   * @return {string}
+   */
+  private getBumpType(): string {
+    return this.cli.isAuto() ?
+      this.bumpFinder.getBumpType() : this.cli.getRelease();
+  }
+
+  /**
+   * Returns the current branch name.
+   *
+   * @return {Promise<any>}
+   */
+  private getCurrentBranchName(): Promise<string> {
+    return this.exec('git rev-parse --abbrev-ref HEAD')
+      .then(Releaser.removeNewLine);
   }
 }
