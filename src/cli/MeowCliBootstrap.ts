@@ -30,15 +30,15 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -i,  --identifier The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
       -P,  --prefix     The tag prefix, adds 'v' before the tag, example: v0.0.1.
       -f,  --forced     Tries to bump without significant changes in the current repository.
-      -nc, --no-commit  Does not commit the bump in version control.
+      -c,  --commit     Commits the bump in version control, defaults to true.
       -h,  --help       This help message.
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
       $ ccr -p
         Bump to v1.1.2-0 completed.
-      $ ccr --no-commit
-        Bump to v1.1.2, no commits made.
+      $ ccr -c false
+        Bump to v1.1.2 completed, no commits made.
 
       Assuming the current branch is develop and no tag is present with no new features:
       $ ccr
@@ -63,16 +63,17 @@ export class MeowCliBootstrap implements ICliBootstrap {
    */
   private minimistOptions: minimist.Opts = {
     alias:   {
-      d:  'dry',
-      f:  'forced',
-      h:  'help',
-      i:  'identifier',
-      nc: '-no-commit',
-      p:  'pre',
-      P:  'prefix',
+      c: 'commit',
+      d: 'dry',
+      f: 'forced',
+      h: 'help',
+      i: 'identifier',
+      p: 'pre',
+      P: 'prefix',
     },
-    boolean: ['prefix'],
+    boolean: ['prefix', 'commit'],
     default: {
+      commit: true,
       prefix: true,
     },
   };
