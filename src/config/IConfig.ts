@@ -37,6 +37,36 @@ export interface IConfig {
   setPackageJsonVersion(version: string);
 
   /**
+   * Sets the existing package.json as valid or invalid.
+   *
+   * @return void
+   */
+  setPackageJsonValidity(validity: boolean): void;
+
+  /**
+   * Gets the existing package.json validity status.
+   *
+   * @return void
+   */
+  isPackageJsonValid(): boolean;
+
+  /**
+   * Sets the existing package.json as searched or not;
+   * This means the system did not found a valid package.json
+   * or the user didn't select from the files found in the search.
+   *
+   * @return void
+   */
+  setPackageJsonExhaustStatus(status: boolean): void;
+
+  /**
+   * Gets the existing package.json exhaust status.
+   *
+   * @return void
+   */
+  isPackageJsonExhausted(): boolean;
+
+  /**
    * Sets a valid semantic version value.
    *
    * @param {string} value
@@ -63,4 +93,11 @@ export interface IConfig {
    * @return {void}
    */
   deleteCurrentSemVer(): void;
+
+  /**
+   * Resets the config file.
+   *
+   * @return void
+   */
+  reset(): void;
 }

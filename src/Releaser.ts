@@ -143,6 +143,8 @@ export class Releaser {
     this.currentSearchPath = process.cwd();
 
     this.findBranchRootDir().then(results => this.repoRootPath = results);
+
+    if (this.cli.isReset()) this.config.reset();
   }
 
   /**
@@ -151,10 +153,13 @@ export class Releaser {
    * @return void
    */
   public init(): void {
-    this.setPackageJsonInConfig()
+    const promise = this.config.isPackageJsonExhausted() ?
+      Promise.resolve() : this.setPackageJsonInConfig();
+
+    promise
       .then(() => this.syncSemVerVersions())
       .then(() => {
-        if (this.config.hasPackageJson() || this.config.hasCurrentSemVer()) {
+        if (this.config.isPackageJsonValid() || this.config.hasCurrentSemVer()) {
           return this.bump();
         }
 
@@ -162,7 +167,6 @@ export class Releaser {
       })
       .then(() => this.logger.debug('init completed'))
       .catch(reason => {
-        this.logger.debug('errors in init!');
         if (reason instanceof UserAbortedError) {
           return this.logger.info('Aborting.');
         } else if (reason === ERRORS.noNewCommit) {
@@ -223,7 +227,7 @@ export class Releaser {
    * @return {string}
    */
   private getCurrentTag(prefixed = this.cli.hasPrefix()): string {
-    if (this.config.hasPackageJson()) {
+    if (this.config.isPackageJsonValid()) {
       return prefixed ?
         'v'.concat(this.config.getPackageJson().pkg.version) :
         this.config.getPackageJson().pkg.version;
@@ -318,9 +322,13 @@ export class Releaser {
   private handleIsPackageJsonFileIsCorrectResponse(answer: string): Promise<void> {
     return Promise.resolve()
       .then(() => {
+        if (this.config.isPackageJsonExhausted()) return Promise.reject(ERRORS.exhaustedDir);
+      })
+      .then(() => {
         switch (answer) {
           case 'Yes':
-            //
+            this.config.setPackageJsonValidity(true);
+            this.config.setPackageJsonExhaustStatus(true);
             break;
           case 'No':
             const packageJson = this.config.getPackageJson();
@@ -334,6 +342,9 @@ export class Releaser {
 
             // '' means the directories are equal, no '..' means the dir is outside the root
             if (pathSplit[0] === '' || pathSplit[0] !== '..') {
+              this.config.setPackageJsonExhaustStatus(true);
+              this.config.setPackageJsonValidity(false);
+
               return Promise.reject(ERRORS.exhaustedDir);
             }
 
@@ -435,7 +446,7 @@ export class Releaser {
 
         return this.createTag(label)
           .then(() => {
-            if (this.config.hasPackageJson()) {
+            if (this.config.isPackageJsonValid()) {
               this.config.setPackageJsonVersion(label);
             }
 
@@ -469,7 +480,7 @@ export class Releaser {
   private syncSemVerVersions(): Promise<void> {
     // check if package.json exists, to set the version from it
     // if not, find the latest version through git.
-    const promise = this.config.hasPackageJson() ?
+    const promise = this.config.isPackageJsonValid() ?
       Promise.resolve([this.config.getPackageJson().pkg.version]) : this.getAllSemVerTags();
 
     return promise.then(tags => this.setLatestSemVerInConfig(tags));

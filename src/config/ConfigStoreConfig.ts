@@ -15,6 +15,22 @@ export class ConfigStoreConfig implements IConfig {
     this.config.set('packageJson.pkg.version', version.replace(/^v/, ''));
   }
 
+  public setPackageJsonValidity(validity: boolean): void {
+    this.config.set('packageJson.valid', validity);
+  }
+
+  public setPackageJsonExhaustStatus(status: boolean): void {
+    this.config.set('packageJson.exhausted', status);
+  }
+
+  public isPackageJsonValid(): boolean {
+    return this.config.get('packageJson.valid');
+  }
+
+  public isPackageJsonExhausted(): boolean {
+    return this.config.get('packageJson.exhausted');
+  }
+
   public getPackageJson(): IPkgUpResultObject {
     return this.config.get('packageJson');
   }
@@ -41,5 +57,9 @@ export class ConfigStoreConfig implements IConfig {
 
   public deleteCurrentSemVer(): void {
     return this.config.delete('currentSemVer');
+  }
+
+  public reset(): void {
+    this.config.clear();
   }
 }
