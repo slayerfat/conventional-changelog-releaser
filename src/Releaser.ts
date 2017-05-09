@@ -10,6 +10,7 @@ import {UserAbortedError} from './exceptions/UserAbortedError';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
+  invalidLabel:   'The specified label was not found in the repository.',
   invalidVersion: 'Version in selected package.json does not follow semver.',
   noNewCommit:    'No new commits since last tag, aborting.',
   noPackage:      'No package.json found.',
@@ -31,13 +32,6 @@ export class Releaser {
    * @type {function}
    */
   private exec: (command: string) => Promise<any>;
-
-  /**
-   * This git command returns the hash of the latest tag in the repository.
-   *
-   * @type {string}
-   */
-  private gitTagHashCommand = 'git rev-list --tags --no-walk --max-count=1';
 
   /**
    * The root path of the related repository.
@@ -98,6 +92,34 @@ export class Releaser {
   }
 
   /**
+   * Uses semver to increment a tag version.
+   *
+   * @param {string} label The current label.
+   * @param {string} type
+   * @param {string=} suffix
+   * @return {string}
+   */
+  private static incrementSemVer(label: string, type: string, suffix?: string): string {
+    if (!semver.valid(label)) {
+      throw new Error(`The provided label ${label} does not follow semver.`);
+    }
+
+    switch (type) {
+      case 'prerelease':
+        return semver.inc(label, type, suffix as any);
+      case 'major':
+      case 'minor':
+      case 'patch':
+      case 'premajor':
+      case 'preminor':
+      case 'prepatch':
+        return semver.inc(label, type);
+      default:
+        throw new Error(`Invalid type ${type} provided.`);
+    }
+  }
+
+  /**
    * Construct a new Releaser with the given parameters.
    *
    * @param {ICliBootstrap} cli The CLI wrapper.
@@ -122,20 +144,21 @@ export class Releaser {
    */
   public init(): void {
     this.setPackageJsonInConfig()
-      .then(() => this.setLatestSemVerInConfig())
+      .then(() => this.syncSemVerVersions())
       .then(() => {
         if (this.config.hasPackageJson() || this.config.hasCurrentSemVer()) {
-          this.bump();
+          return this.bump();
         }
+
+        throw new Error('Unknown config state.');
       })
-      .then(bumpResult => {
-        this.logger.debug('init completed');
-        this.logger.debug(bumpResult);
-      })
+      .then(() => this.logger.debug('init completed'))
       .catch(reason => {
         this.logger.debug('errors in init!');
         if (reason instanceof UserAbortedError) {
-          return this.logger.debug('user aborted.');
+          return this.logger.info('Aborting.');
+        } else if (reason === ERRORS.noNewCommit) {
+          return this.logger.warn(ERRORS.noNewCommit);
         }
 
         throw reason;
@@ -143,48 +166,22 @@ export class Releaser {
   }
 
   /**
-   * Checks if the current branch has no new commits since last tag.
-   * In other words, checks if there are new commits after the most recent tag.
+   * Checks if the branch has any commits since last tag made.
    *
-   * @returns {Promise<boolean>}
+   * @return {Promise<boolean>}
    */
-  private getBranchStatus(): Promise<number> {
-    return Promise.resolve()
-      .then(() => this.isAnyTagPresent())
-      .then(tagIsPresent => {
-        if (!tagIsPresent) {
+  private isBranchPristine(): Promise<boolean> {
+    return this.isAnyTagPresent()
+      .then(value => {
+        if (value === false) {
           return Promise.reject(BRANCH_STATUS.NO_TAG);
         }
 
-        return this.exec(this.gitTagHashCommand);
+        return this.getHashFromTag(this.config.getCurrentSemVer());
       })
+      .then(hash => this.exec(`git rev-list ${hash}..HEAD --count`))
       .then(Releaser.removeNewLine)
-      .then(commit => this.exec(`git describe --tags ${commit}`))
-      .then(Releaser.removeNewLine)
-      .then(tag => {
-        if (!semver.valid(tag)) {
-          return Promise.reject(BRANCH_STATUS.INVALID_TAG);
-        }
-
-        return this.exec(this.gitTagHashCommand);
-      })
-      .then(Releaser.removeNewLine)
-      .then(commit => this.exec(`git rev-list ${commit}..HEAD --count`))
-      .then(Releaser.removeNewLine)
-      .then(count => {
-        if (parseInt(count, 10) === 0) {
-          return Promise.resolve(BRANCH_STATUS.PRISTINE);
-        }
-
-        return Promise.resolve(BRANCH_STATUS.NOT_PRISTINE);
-      })
-      .catch(err => {
-        if (err instanceof Error) {
-          throw err;
-        }
-
-        return Promise.resolve(err);
-      });
+      .then(count => (parseInt(count, 10) === 0));
   }
 
   /**
@@ -322,7 +319,14 @@ export class Releaser {
    */
   private getHashFromTag(tag: string): Promise<string> {
     return this.exec(`git show-ref -s ${tag}`)
-      .then(Releaser.removeNewLine);
+      .then(Releaser.removeNewLine).catch(reason => {
+        // tag label not found
+        if (reason.code === 1) {
+          throw new Error(ERRORS.invalidLabel);
+        }
+
+        throw reason;
+      });
   }
 
   /**
@@ -354,42 +358,74 @@ export class Releaser {
   private createTag(label: string): Promise<void> {
     this.logger.debug(`creating new tag as ${label}`);
 
-    return this.exec(`git tag ${label}`);
+    return this.exec(`git tag ${label}`).catch(err => {
+      if (err.code === 128 && /already exists/.test(err.stderr)) {
+        throw new Error(err.stderr);
+      }
+
+      throw err;
+    });
   }
 
   /**
-   * TODO: implement bump
+   * Bumps the current branch to the next semver number.
+   *
+   * @param {boolean} checkBranchType Checks the branch name and assumes type of bump.
+   * @return {Promise<void>}
    */
-  private bump() {
-    this.logger.debug('bump!');
+  private bump(checkBranchType = false): Promise<void> {
+    return Promise.resolve()
+      .then(() => {
+        return this.isBranchPristine()
+          .catch(reason => {
+            if (reason === BRANCH_STATUS.NO_TAG) {
+              // no tag in this circumstance is valid
+              return Promise.resolve(false);
+            } else if (reason.message === ERRORS.invalidLabel) {
+              // package.json version is not tagged but valid.
+              return Promise.resolve(false);
+            }
+
+            throw reason;
+          });
+      })
+      .then(results => {
+        if (results === true && !this.isForcedMode()) {
+          return Promise.reject(ERRORS.noNewCommit);
+        }
+
+        if (checkBranchType) {
+          // TODO branch type
+        }
+
+        const label = Releaser.incrementSemVer(this.config.getCurrentSemVer(), 'patch');
+
+        this.createTag(label)
+          .then(() => this.config.setCurrentSemVer(label))
+          .then(() => {
+            if (this.cli.getFlag('commit') === true) {
+              this.logger.info(`Bump to ${label} completed.`);
+
+              return;
+            }
+
+            this.logger.info(`Bump to ${label} completed, no commits made.`);
+          });
+      });
   }
 
   /**
-   * Sets the last valid semantic version tag into the config file.
+   * Sync the package.json version with current semver in config.
    *
    * @return {Promise<boolean>}
    */
-  private setLatestSemVerInConfig(): Promise<void> {
-    return this.getAllSemVerTags().then(tags => {
-      if (tags.length === 0) {
-        this.config.deleteCurrentSemVer();
-        return this.promptUser<boolean>({message: 'No tags found, continue?'})
-          .then(answer => {
-            if (answer === true) {
-              const label = this.cli.getFlag('prefix') ? 'v0.0.1' : '0.0.1';
+  private syncSemVerVersions(): Promise<void> {
+    // check if package.json exists, to set the version from it
+    // if not, find the latest version through git.
+    const promise = this.config.hasPackageJson() ?
+      Promise.resolve([this.config.getPackageJson().pkg.version]) : this.getAllSemVerTags();
 
-              return this.createTag(label)
-                .then(() => this.getHashFromTag(label))
-                .then(() => this.config.setCurrentSemVer(label));
-            }
-
-            return Promise.reject(new UserAbortedError());
-          });
-      }
-
-      const sorted = tags.sort(semver.rcompare);
-      this.config.setCurrentSemVer(sorted[0]);
-    });
+    return promise.then(tags => this.setLatestSemVerInConfig(tags));
   }
 
   /**
@@ -436,5 +472,30 @@ export class Releaser {
 
         return validTags;
       });
+  }
+
+  /**
+   * Sets the last valid semantic version tag into the config file.
+   *
+   * @return {Promise<boolean>}
+   */
+  private setLatestSemVerInConfig(tags: string[]): Promise<void> {
+    return Promise.resolve().then(() => {
+      if (tags.length === 0) {
+        this.config.deleteCurrentSemVer();
+        return this.promptUser<boolean>({message: 'No valid semver tags found, continue?'})
+          .then((answer): Promise<void> => {
+            if (answer !== true) {
+              return Promise.reject(new UserAbortedError());
+            }
+
+            const label = this.cli.getFlag('prefix') ? 'v0.0.1' : '0.0.1';
+            this.config.setCurrentSemVer(label);
+          });
+      }
+
+      const sorted = tags.sort(semver.rcompare);
+      this.config.setCurrentSemVer(sorted[0]);
+    });
   }
 }
