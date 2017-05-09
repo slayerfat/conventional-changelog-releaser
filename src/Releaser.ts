@@ -337,15 +337,6 @@ export class Releaser {
   }
 
   /**
-   * Checks if if running in forced mode.
-   *
-   * @returns {boolean}
-   */
-  private isForcedMode(): boolean {
-    return this.cli.getFlag('forced');
-  }
-
-  /**
    * Uses git to find the root directory of the current path.
    * @link http://stackoverflow.com/a/957978
    *
@@ -396,19 +387,19 @@ export class Releaser {
           });
       })
       .then(results => {
-        if (results === true && !this.isForcedMode()) {
+        if (results === true && !this.cli.isForced()) {
           return Promise.reject(ERRORS.noNewCommit);
         }
 
-        const type = this.cli.getFlag('auto') ?
-          this.bumpFinder.getBumpType() : this.cli.getFlag('release');
+        const type = this.cli.isAuto() ?
+          this.bumpFinder.getBumpType() : this.cli.getRelease();
 
         const label = this.constructNewLabel(this.config.getCurrentSemVer(), type);
 
         this.createTag(label)
           .then(() => this.config.setCurrentSemVer(label))
           .then(() => {
-            if (this.cli.getFlag('commit') === true) {
+            if (this.cli.shouldCommit() === true) {
               this.logger.info(`Bump to ${label} completed.`);
 
               return;
@@ -494,7 +485,7 @@ export class Releaser {
               return Promise.reject(new UserAbortedError());
             }
 
-            const label = this.cli.getFlag('prefix') ? 'v0.0.1' : '0.0.1';
+            const label = this.cli.hasPrefix() ? 'v0.0.1' : '0.0.1';
             this.config.setCurrentSemVer(label);
           });
       }
@@ -514,6 +505,6 @@ export class Releaser {
   private constructNewLabel(name: string, type: string) {
     const label = Releaser.incrementSemVer(name, type);
 
-    return this.cli.getFlag('prefix') ? 'v'.concat(label) : label;
+    return this.cli.hasPrefix() ? 'v'.concat(label) : label;
   }
 }

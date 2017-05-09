@@ -35,4 +35,39 @@ export interface ICliBootstrap {
    * @param code
    */
   showHelp(code?: number): void;
+
+  /**
+   * Gets the auto flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isAuto(): boolean;
+
+  /**
+   * Gets the forced flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isForced(): boolean;
+
+  /**
+   * Gets the release type from the cli.
+   *
+   * @return {string}
+   */
+  getRelease(): string;
+
+  /**
+   * Gets the prefix flag from the cli.
+   *
+   * @return {boolean}
+   */
+  hasPrefix(): boolean;
+
+  /**
+   * Gets the commit flag from the cli.
+   *
+   * @return {boolean}
+   */
+  shouldCommit(): boolean;
 }

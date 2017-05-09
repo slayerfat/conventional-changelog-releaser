@@ -77,16 +77,29 @@ export class MeowCliBootstrap implements ICliBootstrap {
       P: 'prefix',
       r: 'release',
     },
-    boolean: ['auto', 'commit', 'npm-publish', 'prefix'],
+    boolean: [
+      'auto',
+      'commit',
+      'npm-publish',
+      'prefix',
+      'dry',
+      'forced',
+      'npm-publish',
+      'pre',
+    ],
     default: {
-      auto: true,
-      commit:     true,
-      prefix:     true,
+      auto:   true,
+      commit: true,
+      dry:    false,
+      prefix: true,
+      forced: false,
     },
+    string:  ['identifier', 'release'],
   };
 
   public init() {
     this.cli = meow(this.helpText, this.minimistOptions);
+    this.checkPreconditions();
   }
 
   public getInputs(): string[] {
@@ -103,5 +116,36 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public showHelp(code?: number): void {
     throw this.cli.showHelp(code);
+  }
+
+  public isAuto(): boolean {
+    return this.getFlag('auto');
+  }
+
+  public isForced(): boolean {
+    return this.getFlag('forced');
+  }
+
+  public getRelease(): string {
+    return this.getFlag('release');
+  }
+
+  public hasPrefix(): boolean {
+    return this.getFlag('prefix');
+  }
+
+  public shouldCommit(): boolean {
+    return this.getFlag('commit');
+  }
+
+  /**
+   * Checks all the preconditions the cli must have to run.
+   *
+   * @return {void}
+   */
+  private checkPreconditions(): void {
+    if (!this.isAuto() && this.getRelease() === undefined) {
+      throw new Error('Release type must be set if not in auto mode.');
+    }
   }
 }
