@@ -9,6 +9,7 @@ import {IPrompt} from './prompt/IPrompt';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 import {ISemVer} from './semver/ISemVer';
+import {readPkgUp} from './others/types';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
@@ -73,7 +74,7 @@ export class Releaser {
    * @param {IExecutor} executor A shell exec implementation.
    * @param {IPrompt} prompt A shell prompt implementation.
    * @param {ISemVer} semver The semver wrapper.
-   * @param {function} readPkgUp A shell prompt implementation.
+   * @param {readPkgUp} readPkgUp A shell prompt implementation.
    */
   constructor(
     private cli: ICliBootstrap,
@@ -83,7 +84,7 @@ export class Releaser {
     private executor: IExecutor,
     private prompt: IPrompt,
     private semver: ISemVer,
-    private readPkgUp: (options: {cwd: string, normalize?: boolean}) => Promise<IPkgUpResultObject>,
+    private readPkgUp: readPkgUp,
   ) {
     this.currentSearchPath = process.cwd();
   }
