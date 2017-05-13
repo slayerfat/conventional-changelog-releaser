@@ -1,5 +1,3 @@
-import * as readPkgUp from 'read-pkg-up';
-import * as semver from 'semver';
 import {IBumpFinder} from './bumpFinder/IBumpFinder';
 import {ICliBootstrap} from './cli/ICliBootstrap';
 import {IConfig} from './config/IConfig';
@@ -10,6 +8,7 @@ import {IPkgUpResultObject} from './config/IPkgResultObject';
 import {IPrompt} from './prompt/IPrompt';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
+import {ISemVer} from './semver/ISemVer';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
@@ -22,10 +21,10 @@ const ERRORS = {
 const enum BRANCH_STATUS {
   FORCED_BUMP   = 1,
   INVALID_LABEL = 2,
-  INVALID_TAG   = 3,
+  // INVALID_TAG   = 3,
   NO_TAG        = 4,
-  NOT_PRISTINE  = 5,
-  PRISTINE      = 6,
+  // NOT_PRISTINE  = 5,
+  // PRISTINE      = 6,
 }
 
 export class Releaser {
@@ -65,34 +64,6 @@ export class Releaser {
   }
 
   /**
-   * Uses semver to increment a tag version.
-   *
-   * @param {string} label The current label.
-   * @param {string} type
-   * @param {string=} suffix
-   * @return {string}
-   */
-  private static incrementSemVer(label: string, type: string, suffix?: string): string {
-    if (!semver.valid(label)) {
-      throw new Error(`The provided label ${label} does not follow semver.`);
-    }
-
-    switch (type) {
-      case 'prerelease':
-        return semver.inc(label, type, suffix as any);
-      case 'major':
-      case 'minor':
-      case 'patch':
-      case 'premajor':
-      case 'preminor':
-      case 'prepatch':
-        return semver.inc(label, type);
-      default:
-        throw new Error(`Invalid type ${type} provided.`);
-    }
-  }
-
-  /**
    * Construct a new Releaser with the given parameters.
    *
    * @param {ICliBootstrap} cli The CLI wrapper.
@@ -101,6 +72,8 @@ export class Releaser {
    * @param {IBumpFinder} bumpFinder The implementation of a bumpFinder.
    * @param {IExecutor} executor A shell exec implementation.
    * @param {IPrompt} prompt A shell prompt implementation.
+   * @param {ISemVer} semver The semver wrapper.
+   * @param {function} readPkgUp A shell prompt implementation.
    */
   constructor(
     private cli: ICliBootstrap,
@@ -109,6 +82,8 @@ export class Releaser {
     private bumpFinder: IBumpFinder,
     private executor: IExecutor,
     private prompt: IPrompt,
+    private semver: ISemVer,
+    private readPkgUp: (options: {cwd: string, normalize?: boolean}) => Promise<IPkgUpResultObject>,
   ) {
     this.currentSearchPath = process.cwd();
   }
@@ -246,17 +221,17 @@ export class Releaser {
    */
   private findPackageJsonFile(cwd = this.currentSearchPath): Promise<IPkgUpResultObject> {
     return Promise.resolve()
-      .then(() => readPkgUp({cwd}))
+      .then(() => this.readPkgUp({cwd}))
       .then(file => {
         if (typeof file !== 'object' || file.length === 0) {
-          return Promise.reject(ERRORS.noPackage);
+          throw new Error(ERRORS.noPackage);
         }
 
         return file;
       })
       .catch(err => {
         if (err instanceof Error && /Invalid version:/.test(err.message)) {
-          return readPkgUp({cwd, normalize: false}).then((result): IPkgUpResultObject => {
+          return this.readPkgUp({cwd, normalize: false}).then(result => {
             throw new Error(`${ERRORS.invalidVersion} \n File: ${result.path} \n ${err.message}`);
           });
         }
@@ -523,7 +498,7 @@ export class Releaser {
           });
       }
 
-      const sorted = tags.sort(semver.rcompare);
+      const sorted = tags.sort(this.semver.rCompare);
       this.config.setCurrentSemVer(sorted[0]);
     });
   }
@@ -536,7 +511,7 @@ export class Releaser {
    * @return {string}
    */
   private constructNewLabel(name: string, type: string) {
-    const label = Releaser.incrementSemVer(name, type);
+    const label = this.incrementSemVer(name, type);
 
     return this.cli.hasPrefix() ? 'v'.concat(label) : label;
   }
@@ -572,5 +547,33 @@ export class Releaser {
   private getCurrentBranchName(): Promise<string> {
     return this.executor.perform('git rev-parse --abbrev-ref HEAD')
       .then(Releaser.removeNewLine);
+  }
+
+  /**
+   * Uses semver to increment a tag version.
+   *
+   * @param {string} label The current label.
+   * @param {string} type
+   * @param {string=} suffix
+   * @return {string}
+   */
+  private incrementSemVer(label: string, type: string, suffix?: string): string {
+    if (!this.semver.valid(label)) {
+      throw new Error(`The provided label ${label} does not follow semver.`);
+    }
+
+    switch (type) {
+      case 'prerelease':
+        return this.semver.inc(label, type, suffix as any);
+      case 'major':
+      case 'minor':
+      case 'patch':
+      case 'premajor':
+      case 'preminor':
+      case 'prepatch':
+        return this.semver.inc(label, type);
+      default:
+        throw new Error(`Invalid type ${type} provided.`);
+    }
   }
 }

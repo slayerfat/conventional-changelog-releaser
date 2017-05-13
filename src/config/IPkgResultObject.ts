@@ -5,4 +5,5 @@
 export interface IPkgUpResultObject {
   pkg: {[name: string]: string};
   path: string;
+  length: number;
 }
