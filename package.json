@@ -11,9 +11,11 @@
     "commitmsg": "validate-commit-msg",
     "debug": "DEBUG=* node --require pretty-error/start lib/main.js",
     "prepublish": "tsc",
-    "test": "mocha -r ts-node/register test/**/*.spec.ts",
+    "test": "npm run mocha && npm run tslint",
+    "mocha": "mocha -r ts-node/register test/**/*.spec.ts",
+    "tsc": "tsc",
     "tsc:w": "tsc -w",
-    "tslint": "tslint -c tslint.json src/** --fix"
+    "tslint": "tslint -c tslint.json src/**"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,23 @@
+language: node_js
+
+node_js:np
+  - 6
+
+cache:
+  directories:
+    - node_modules
+    - $HOME/.cache
+
+install:
+  - npm install
+
+before_script:
+  - npm run tsc
+
+script:
+  - npm test
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change
