@@ -1,13 +1,15 @@
 import * as readPkgUp from 'read-pkg-up';
 import * as semver from 'semver';
+import {IBumpFinder} from './bumpFinder/IBumpFinder';
 import {ICliBootstrap} from './cli/ICliBootstrap';
 import {IConfig} from './config/IConfig';
+import {IExecReturnObject} from './exec/IExecReturnObject';
+import {IExecutor} from './exec/IExecutor';
 import {ILogger} from './debug/ILogger';
 import {IPkgUpResultObject} from './config/IPkgResultObject';
 import {prompt, Question, Questions} from 'inquirer';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
-import {IBumpFinder} from './bumpFinder/IBumpFinder';
 
 const ERRORS = {
   exhaustedDir:   'Exhausted all directories within repository.',
@@ -29,13 +31,6 @@ const enum BRANCH_STATUS {
 export class Releaser {
 
   /**
-   * Executes a command as a promise.
-   *
-   * @type {function}
-   */
-  private exec: (command: string) => Promise<any>;
-
-  /**
    * The root path of the related repository.
    *
    * @type {string}
@@ -55,7 +50,7 @@ export class Releaser {
    * @param results
    * @returns {string}
    */
-  private static removeNewLine(results): string {
+  private static removeNewLine(results: IExecReturnObject): string {
     if (typeof results !== 'object') {
       throw new Error('The results must be an object.');
     }
@@ -128,35 +123,33 @@ export class Releaser {
    * @param {ILogger} logger A Logger implementation.
    * @param {IConfig} config A config implementation.
    * @param {IBumpFinder} bumpFinder The implementation of a bumpFinder.
+   * @param {IExecutor} executor A shell exec implementation.
    */
   constructor(
     private cli: ICliBootstrap,
     private logger: ILogger,
     private config: IConfig,
     private bumpFinder: IBumpFinder,
+    private executor: IExecutor,
   ) {
-    this.cli.init();
-    this.logger.debug('starting');
-
-    this.exec = require('child-process-promise').exec;
-
     this.currentSearchPath = process.cwd();
-
-    this.findBranchRootDir().then(results => this.repoRootPath = results);
-    if (this.cli.isReset()) this.config.reset();
-    if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
   }
 
   /**
    * Checks the branch and bumps it accordingly.
    *
-   * @return void
+   * @return Promise<void>
    */
-  public init(): void {
+  public init(): Promise<void> {
+    this.logger.debug('starting');
+
+    this.cli.init();
+    this.setDefaultConfig();
+
     const promise = this.config.isPackageJsonExhausted() ?
       Promise.resolve() : this.setPackageJsonInConfig();
 
-    promise
+    return promise
       .then(() => this.syncSemVerVersions())
       .then(() => {
         if (this.config.isPackageJsonValid() || this.config.hasCurrentSemVer()) {
@@ -175,6 +168,18 @@ export class Releaser {
 
         throw reason;
       });
+  }
+
+  /**
+   * Sets the default configuration state.
+   *
+   * @return void
+   */
+  private setDefaultConfig(): void {
+    this.findBranchRootDir().then(results => this.repoRootPath = results);
+
+    if (this.cli.isReset()) this.config.reset();
+    if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
   }
 
   /**
@@ -216,7 +221,7 @@ export class Releaser {
           });
       })
       .then(currentTag => this.getHashFromTag(currentTag))
-      .then(hash => this.exec(`git rev-list ${hash}..HEAD --count`))
+      .then(hash => this.executor.perform(`git rev-list ${hash}..HEAD --count`))
       .then(Releaser.removeNewLine)
       .then(count => (parseInt(count, 10) === 0));
   }
@@ -367,7 +372,7 @@ export class Releaser {
    * @returns {Promise<boolean>}
    */
   private isAnyTagPresent(): Promise<boolean> {
-    return this.exec('git tag')
+    return this.executor.perform('git tag')
       .then(results => (results.stdout.length > 0));
   }
 
@@ -378,7 +383,7 @@ export class Releaser {
    * @returns {Promise<string>}
    */
   private getHashFromTag(tag: string): Promise<string> {
-    return this.exec(`git show-ref -s ${tag}`)
+    return this.executor.perform(`git show-ref -s ${tag}`)
       .then(Releaser.removeNewLine).catch(reason => {
         // tag label not found
         if (reason.code === 1) {
@@ -396,7 +401,7 @@ export class Releaser {
    * @return {Promise<string>}
    */
   private findBranchRootDir(): Promise<string> {
-    return this.exec('git rev-parse --show-toplevel')
+    return this.executor.perform('git rev-parse --show-toplevel')
       .then(Releaser.removeNewLine);
   }
 
@@ -407,15 +412,15 @@ export class Releaser {
    * @return {Promise<void>}
    */
   private createTag(label: string): Promise<void> {
-    this.logger.debug(`creating new tag as ${label}`);
+    return this.executor.perform(`git tag ${label}`)
+      .then(() => this.logger.debug(`created new tag as ${label}`))
+      .catch(err => {
+        if (err.code === 128 && /already exists/.test(err.stderr)) {
+          throw new Error(err.stderr);
+        }
 
-    return this.exec(`git tag ${label}`).catch(err => {
-      if (err.code === 128 && /already exists/.test(err.stderr)) {
-        throw new Error(err.stderr);
-      }
-
-      throw err;
-    });
+        throw err;
+      });
   }
 
   /**
@@ -517,7 +522,7 @@ export class Releaser {
     const validTags = [];
 
     return Promise.resolve()
-      .then(() => this.exec('git tag'))
+      .then(() => this.executor.perform('git tag'))
       .then(value => {
         const tags = value.stdout.split('\n')
           .filter(tag => tag.length > 1);
@@ -578,7 +583,7 @@ export class Releaser {
    * @return {Promise<any>}
    */
   private isTagPresent(label: string): Promise<boolean> {
-    return this.exec(`git tag -l ${label}`)
+    return this.executor.perform(`git tag -l ${label}`)
       .then(Releaser.removeNewLine)
       .then(value => (value.length > 0));
   }
@@ -599,7 +604,7 @@ export class Releaser {
    * @return {Promise<any>}
    */
   private getCurrentBranchName(): Promise<string> {
-    return this.exec('git rev-parse --abbrev-ref HEAD')
+    return this.executor.perform('git rev-parse --abbrev-ref HEAD')
       .then(Releaser.removeNewLine);
   }
 }
