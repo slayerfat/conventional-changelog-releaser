@@ -7,7 +7,7 @@ import {IExecReturnObject} from './exec/IExecReturnObject';
 import {IExecutor} from './exec/IExecutor';
 import {ILogger} from './debug/ILogger';
 import {IPkgUpResultObject} from './config/IPkgResultObject';
-import {prompt, Question, Questions} from 'inquirer';
+import {IPrompt} from './prompt/IPrompt';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 
@@ -65,30 +65,6 @@ export class Releaser {
   }
 
   /**
-   * Returns a question related to the package.json given as an argument.
-   *
-   * @param {IPkgUpResultObject} file The result from a pkg-up exec.
-   * @returns {Questions} The user's answer, yes, no, and optionally abort.
-   */
-  private static constructPackageJsonQuestion(file: IPkgUpResultObject): Questions {
-    const question = {
-      choices: ['Yes', 'No'],
-      message: null,
-      name:    'continue',
-      type:    'list',
-    };
-
-    if (file === null) {
-      question.message = 'No package.json found, keep looking?';
-    } else {
-      question.message = `Package.json found in ${file.path}, is this file correct?`;
-      question.choices.push('Abort');
-    }
-
-    return question;
-  }
-
-  /**
    * Uses semver to increment a tag version.
    *
    * @param {string} label The current label.
@@ -124,6 +100,7 @@ export class Releaser {
    * @param {IConfig} config A config implementation.
    * @param {IBumpFinder} bumpFinder The implementation of a bumpFinder.
    * @param {IExecutor} executor A shell exec implementation.
+   * @param {IPrompt} prompt A shell prompt implementation.
    */
   constructor(
     private cli: ICliBootstrap,
@@ -131,6 +108,7 @@ export class Releaser {
     private config: IConfig,
     private bumpFinder: IBumpFinder,
     private executor: IExecutor,
+    private prompt: IPrompt,
   ) {
     this.currentSearchPath = process.cwd();
   }
@@ -198,10 +176,10 @@ export class Releaser {
         return this.isTagPresent(currentTag)
           .then((isTagPresent): Promise<string> => {
             if (!isTagPresent) {
-              return this.promptUser({
-                message: `Tag ${currentTag} is not present in repository, continue?`,
-              }).then(answer => {
-                if (!answer) throw new UserAbortedError();
+              return this.prompt.confirm(
+                `Tag ${currentTag} is not present in repository, continue?`,
+              ).then(answer => {
+                if (answer === false) throw new UserAbortedError();
 
                 return this.createTag(currentTag)
                   .then(() => {
@@ -240,24 +218,6 @@ export class Releaser {
 
     return prefixed ?
       'v'.concat(this.config.getCurrentSemVer()) : this.config.getCurrentSemVer();
-  }
-
-  /**
-   * Prompts a new question to the user.
-   *
-   * @param {string=} message The prompt message.
-   * @param {string=} name The prompt name or identifier (used in answer object)
-   * @param {string=} type The type of prompt to make
-   * @return {Promise<T | boolean>}
-   */
-  private promptUser<T>({
-    message = 'Continue?',
-    name = 'continue',
-    type = 'confirm',
-  }: Question): Promise<T> {
-    return Promise.resolve()
-      .then(() => prompt({message, name, type, default: false}))
-      .then(answer => Promise.resolve(answer[name]));
   }
 
   /**
@@ -313,9 +273,17 @@ export class Releaser {
    */
   private askUserIfPackageJsonFileIsCorrect(file: IPkgUpResultObject): Promise<string> {
     this.config.setPackageJson(file);
-    const question = Releaser.constructPackageJsonQuestion(file);
+    let message: string;
+    const choices = ['Yes', 'No'];
 
-    return prompt(question).then(answer => answer.continue);
+    if (file === null) {
+      message = 'No package.json found, keep looking?';
+    } else {
+      message = `Package.json found in ${file.path}, is this file correct?`;
+      choices.push('Abort');
+    }
+
+    return this.prompt.list(message, choices);
   }
 
   /**
@@ -546,11 +514,9 @@ export class Releaser {
     return Promise.resolve().then(() => {
       if (tags.length === 0) {
         this.config.deleteCurrentSemVer();
-        return this.promptUser<boolean>({message: 'No valid semver tags found, continue?'})
+        return this.prompt.confirm('No valid semver tags found, continue?')
           .then((answer): Promise<void> => {
-            if (answer !== true) {
-              return Promise.reject(new UserAbortedError());
-            }
+            if (answer === false) return Promise.reject(new UserAbortedError());
 
             const label = this.cli.hasPrefix() ? 'v0.0.1' : '0.0.1';
             this.config.setCurrentSemVer(label);
