@@ -19,7 +19,7 @@ export class InquirerPrompt implements IPrompt {
     };
 
     return prompt(question)
-      .then(answer => Promise.resolve(answer[this.questionName]));
+      .then(answer => answer[this.questionName]);
   }
 
   public list(message: string, choices: string[]): Promise<string> {
@@ -31,6 +31,6 @@ export class InquirerPrompt implements IPrompt {
     };
 
     return prompt(question)
-      .then(answer => Promise.resolve(answer[this.questionName]));
+      .then(answer => answer[this.questionName]);
   }
 }
