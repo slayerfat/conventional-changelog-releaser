@@ -3,9 +3,9 @@ import {IFlagsObject} from '../../src/cli/IFlagsObject';
 import {MeowCliBootstrap} from '../../src/cli/MeowCliBootstrap';
 
 export class CliBootstrapMock extends MeowCliBootstrap {
-  private inputs: string[];
+  private inputs: string[] = [];
 
-  private flags: IFlagsObject;
+  private flags: IFlagsObject = {};
 
   public init() {
     //
@@ -20,10 +20,6 @@ export class CliBootstrapMock extends MeowCliBootstrap {
   }
 
   public getFlag(name: string): any {
-    if (this.flags[name] === undefined) {
-      throw new Error(`Flag ${name} is not defined.`);
-    }
-
     return this.flags[name];
   }
 
