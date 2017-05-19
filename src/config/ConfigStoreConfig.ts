@@ -15,6 +15,10 @@ export class ConfigStoreConfig implements IConfig {
     this.config.set('packageJson.pkg.version', version.replace(/^v/, ''));
   }
 
+  public getPackageJsonVersion(): string {
+    return this.config.get('packageJson.pkg.version');
+  }
+
   public setPackageJsonValidity(validity: boolean): void {
     this.config.set('packageJson.valid', validity);
   }

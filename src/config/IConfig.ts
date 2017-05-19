@@ -37,6 +37,13 @@ export interface IConfig {
   setPackageJsonVersion(version: string);
 
   /**
+   * Gets the stored package.json version.
+   *
+   * @return {string}
+   */
+  getPackageJsonVersion(): string;
+
+  /**
    * Sets the existing package.json as valid or invalid.
    *
    * @return void
