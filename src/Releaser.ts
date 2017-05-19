@@ -186,14 +186,10 @@ export class Releaser {
    * @return {string}
    */
   private getCurrentTag(prefixed = this.cli.hasPrefix()): string {
-    if (this.config.isPackageJsonValid()) {
-      return prefixed ?
-        'v'.concat(this.config.getPackageJson().pkg.version) :
-        this.config.getPackageJson().pkg.version;
-    }
+    const version = this.config.isPackageJsonValid() ?
+      this.config.getPackageJsonVersion() : this.config.getCurrentSemVer();
 
-    return prefixed ?
-      'v'.concat(this.config.getCurrentSemVer()) : this.config.getCurrentSemVer();
+    return prefixed ? 'v'.concat(version) : version;
   }
 
   /**
@@ -206,7 +202,7 @@ export class Releaser {
       .then(file => this.askUserIfPackageJsonFileIsCorrect(file))
       .then(answer => this.handleIsPackageJsonFileIsCorrectResponse(answer))
       .catch(reason => {
-        if (reason === ERRORS.exhaustedDir) {
+        if (reason === ERRORS.exhaustedDir || ERRORS.noPackage) {
           return this.logger.debug(reason);
         }
 
@@ -221,10 +217,9 @@ export class Releaser {
    * @return {Promise<IPkgUpResultObject>}
    */
   private findPackageJsonFile(cwd = this.currentSearchPath): Promise<IPkgUpResultObject> {
-    return Promise.resolve()
-      .then(() => this.readPkgUp({cwd}))
+    return this.readPkgUp({cwd})
       .then(file => {
-        if (typeof file !== 'object' || file.length === 0) {
+        if (typeof file !== 'object' || Object.keys(file).length === 0) {
           throw new Error(ERRORS.noPackage);
         }
 
@@ -430,7 +425,7 @@ export class Releaser {
     // check if package.json exists, to set the version from it
     // if not, find the latest version through git.
     const promise = this.config.isPackageJsonValid() ?
-      Promise.resolve([this.config.getPackageJson().pkg.version]) : this.getAllSemVerTags();
+      Promise.resolve([this.config.getPackageJsonVersion()]) : this.getAllSemVerTags();
 
     return promise.then(tags => this.setLatestSemVerInConfig(tags));
   }
