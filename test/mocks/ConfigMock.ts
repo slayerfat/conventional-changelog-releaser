@@ -32,6 +32,10 @@ export class ConfigMock implements IConfig {
     this.setConfig('package.json.version', version);
   }
 
+  public getPackageJsonVersion(): string {
+    return this.getConfig('package.json.version');
+  }
+
   public setPackageJsonValidity(validity: boolean): void {
     this.setConfig('package.json.validity', validity);
   }
