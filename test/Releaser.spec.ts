@@ -1,13 +1,11 @@
 import * as shell from 'shelljs';
 import {BumpFinderMock} from './mocks/BumpFinderMock';
-import {ChildProcessExecutorSync} from '../src/exec/ChildProcessExecutorSync';
 import {CliBootstrapMock} from './mocks/MeowCLIMock';
 import {ConfigMock} from './mocks/ConfigMock';
 import {expect} from 'chai';
 import {IBumpFinder} from '../src/bumpFinder/IBumpFinder';
 import {ICliBootstrap} from '../src/cli/ICliBootstrap';
 import {IConfig} from '../src/config/IConfig';
-import {IExecutorSync} from '../src/exec/IExecutorSync';
 import {ILogger} from '../src/debug/ILogger';
 import {IPrompt} from '../src/prompt/IPrompt';
 import {ISemVer} from '../src/semver/ISemVer';
@@ -17,6 +15,7 @@ import {readPkgUp as TReadPkgUp} from '../src/others/types';
 import {Releaser} from '../src/Releaser';
 import {SemVer} from '../src/semver/SemVer';
 import {writeFileSync} from 'fs';
+import {GitExecutorSync} from '../src/exec/GitExecutorSync';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -25,9 +24,7 @@ describe('Releaser CLI', () => {
   let releaser: Releaser;
 
   function makeNewPkgUpFunction(file?: any) {
-    return (options) => {
-      return Promise.resolve(file || {});
-    };
+    return () => Promise.resolve(file || {});
   }
 
   function makeNewReleaser(options?: {
@@ -35,7 +32,7 @@ describe('Releaser CLI', () => {
     logger?: ILogger,
     config?: IConfig,
     bump?: IBumpFinder,
-    exec?: IExecutorSync,
+    exec?: GitExecutorSync,
     prompt?: IPrompt,
     semver?: ISemVer,
     pkgUp?: TReadPkgUp,
@@ -50,7 +47,7 @@ describe('Releaser CLI', () => {
     pkgUp  = pkgUp || makeNewPkgUpFunction();
 
     // non-mocks
-    exec   = exec || new ChildProcessExecutorSync();
+    exec   = exec || new GitExecutorSync();
     semver = semver || new SemVer();
 
     return new Releaser(cli, logger, config, bump, exec, prompt, semver, pkgUp);

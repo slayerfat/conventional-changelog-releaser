@@ -1,7 +1,7 @@
+import {GitExecutorSync} from './exec/GitExecutorSync';
 import {IBumpFinder} from './bumpFinder/IBumpFinder';
 import {ICliBootstrap} from './cli/ICliBootstrap';
 import {IConfig} from './config/IConfig';
-import {IExecutorSync} from './exec/IExecutorSync';
 import {IExecutor} from './exec/IExecutor';
 import {ILogger} from './debug/ILogger';
 import {IPkgUpResultObject} from './config/IPkgResultObject';
@@ -50,7 +50,7 @@ export class Releaser {
    * @param {ILogger} logger A Logger implementation.
    * @param {IConfig} config A config implementation.
    * @param {IBumpFinder} bumpFinder The implementation of a bumpFinder.
-   * @param {IExecutor} executor A shell exec implementation.
+   * @param {IExecutor} gitExec A GitExecutorSync instance.
    * @param {IPrompt} prompt A shell prompt implementation.
    * @param {ISemVer} semver The semver wrapper.
    * @param {readPkgUp} readPkgUp A shell prompt implementation.
@@ -60,7 +60,7 @@ export class Releaser {
     private logger: ILogger,
     private config: IConfig,
     private bumpFinder: IBumpFinder,
-    private executor: IExecutorSync,
+    private gitExec: GitExecutorSync,
     private prompt: IPrompt,
     private semver: ISemVer,
     private readPkgUp: readPkgUp,
@@ -98,7 +98,7 @@ export class Releaser {
    * @return void
    */
   private setDefaultConfig(): void {
-    this.repoRootPath = this.findBranchRootDir();
+    this.repoRootPath = this.gitExec.findBranchRootDir();
 
     if (this.cli.isReset()) this.config.reset();
     if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
@@ -110,27 +110,36 @@ export class Releaser {
    * @return {Promise<boolean>}
    */
   private async getBranchStatus(): Promise<number> {
-    if (this.isAnyTagPresent() === false) {
+    if (this.gitExec.isAnyTagPresent() === false) {
       return BRANCH_STATUSES.NO_TAG;
     }
 
     const currentTag = this.getCurrentTagFromConfig();
 
-    if (!this.isTagPresent(currentTag)) {
+    if (!this.gitExec.isTagPresent(currentTag)) {
       const answer = await this.prompt.confirm(
         `Tag ${currentTag} is not present in repository, continue?`,
       );
 
       if (answer === false) throw new UserAbortedError();
 
-      // TODO fix BRANCH_STATUSES.FORCED_BUMP
       return BRANCH_STATUSES.FORCED_BUMP;
     }
 
-    const hash  = this.getHashFromTag(currentTag);
-    const count = this.executor.perform(`git rev-list ${hash}..HEAD --count`);
+    let hash;
 
-    if ((parseInt(count, 10) === 0)) {
+    try {
+      hash = this.gitExec.getHashFromTag(currentTag);
+    } catch (err) {
+      // tag label not found
+      if (err.code === 1) {
+        throw new Error(Releaser.errors.noTag);
+      }
+
+      throw err;
+    }
+
+    if (this.gitExec.getCommitsCountFromHash(hash) === 0) {
       return BRANCH_STATUSES.PRISTINE;
     }
 
@@ -253,64 +262,6 @@ export class Releaser {
   }
 
   /**
-   * Checks if tags exist in a branch.
-   *
-   * @returns {boolean}
-   */
-  private isAnyTagPresent(): boolean {
-    return (this.executor.perform('git tag').length > 0);
-  }
-
-  /**
-   * Gets a hash from a given tag.
-   *
-   * @param {string} tag The tag to get the hash from.
-   * @returns {Promise<string>}
-   */
-  private getHashFromTag(tag: string): string {
-    try {
-      return this.executor.perform(`git show-ref -s ${tag}`);
-    } catch (err) {
-      // tag label not found
-      if (err.code === 1) {
-        // TODO fix branch status error
-        throw new Error(BRANCH_STATUSES.INVALID_TAG.toString());
-      }
-
-      throw err;
-    }
-  }
-
-  /**
-   * Uses git to find the root directory of the current path.
-   * @link http://stackoverflow.com/a/957978
-   *
-   * @return {Promise<string>}
-   */
-  private findBranchRootDir(): string {
-    return this.executor.perform('git rev-parse --show-toplevel');
-  }
-
-  /**
-   * Creates a new tag with the given label and prefix.
-   *
-   * @param {string} label The tag label.
-   * @return {void}
-   */
-  private createTag(label: string): void {
-    try {
-      this.executor.perform(`git tag ${label}`);
-    } catch (err) {
-      // TODO find new error object in executor
-      if (err.code === 128 && /already exists/.test(err.stderr)) {
-        throw new Error(err.stderr);
-      }
-
-      throw err;
-    }
-  }
-
-  /**
    * Bumps the current branch to the next semver number.
    *
    * @return {Promise<void>}
@@ -348,7 +299,7 @@ export class Releaser {
    */
   private async syncSemVerVersions(): Promise<void> {
     const tags = this.config.isPackageJsonValid() ?
-      [this.config.getPackageJsonVersion()] : this.getAllSemVerTags();
+      [this.config.getPackageJsonVersion()] : this.gitExec.getAllSemVerTags();
 
     if (tags.length === 0) {
       this.config.deleteCurrentSemVer();
@@ -359,40 +310,6 @@ export class Releaser {
     }
 
     this.setLatestSemVerInConfig(tags);
-  }
-
-  /**
-   * Gets all the valid semantic version tags.
-   *
-   * @return {string[]}
-   */
-  private getAllSemVerTags(): string[] {
-    /**
-     * This regex matches tags with a valid semver.
-     *
-     * ^ asserts position at start of a line
-     * v? matches the 'variable prefix' literally (case sensitive)
-     * \d+ matches a digit (equal to [0-9])
-     * \. matches the character . literally (case sensitive)
-     * \d+ matches a digit (equal to [0-9])
-     * \. matches the character . literally (case sensitive)
-     * \d+ matches a digit (equal to [0-9])
-     * \-? matches the character - literally (case sensitive)
-     * Non-capturing group (?:\d*|\w*\.\d+)
-     *    1st Alternative \d*
-     *      \d* matches a digit (equal to [0-9])
-     *    2nd Alternative \w*\.\d+
-     *      \w* matches any word character (equal to [a-zA-Z0-9_])
-     *      \. matches the character . literally (case sensitive)
-     *      \d+ matches a digit (equal to [0-9])
-     *
-     * @type {RegExp}
-     */
-    const regex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
-
-    return this.executor.perform('git tag').split('\n')
-      .filter(tag => tag.length > 1)
-      .filter(tag => regex.test(tag));
   }
 
   /**
@@ -425,17 +342,6 @@ export class Releaser {
   }
 
   /**
-   * Checks if the given tag is present in the repository.
-   *
-   * @link http://stackoverflow.com/a/43156178
-   * @param label
-   * @return {Promise<any>}
-   */
-  private isTagPresent(label: string): boolean {
-    return (this.executor.perform(`git tag -l ${label}`).length > 0);
-  }
-
-  /**
    * Gets the bump type (minor, major, etc).
    *
    * @return {string}
@@ -443,15 +349,6 @@ export class Releaser {
   private getBumpType(): string {
     return this.cli.isAuto() ?
       this.bumpFinder.getBumpType() : this.cli.getRelease();
-  }
-
-  /**
-   * Returns the current branch name.
-   *
-   * @return {Promise<any>}
-   */
-  private getCurrentBranchName(): string {
-    return this.executor.perform('git rev-parse --abbrev-ref HEAD');
   }
 
   /**
@@ -485,7 +382,7 @@ export class Releaser {
   private handleBumpLabelCommit(): void {
     const label = this.constructNewLabel(this.getCurrentTagFromConfig(), this.getBumpType());
 
-    this.createTag(label);
+    this.gitExec.createTag(label);
 
     if (this.config.isPackageJsonValid()) {
       this.config.setPackageJsonVersion(label);

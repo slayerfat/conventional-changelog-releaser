@@ -5,9 +5,9 @@ import * as CRBFinder from 'conventional-recommended-bump';
 import * as PrettyError from 'pretty-error';
 import * as readPkgUp from 'read-pkg-up';
 import {BumpFinder} from './bumpFinder/BumpFinder';
-import {ChildProcessExecutorSync} from './exec/ChildProcessExecutorSync';
 import {ConfigStoreConfig} from './config/ConfigStoreConfig';
 import {DebugLogger} from './debug/DebugLogger';
+import {GitExecutorSync} from './exec/GitExecutorSync';
 import {InquirerPrompt} from './prompt/InquirerPrompt';
 import {MeowCliBootstrap} from './cli/MeowCliBootstrap';
 import {Releaser} from './Releaser';
@@ -25,7 +25,7 @@ const rel = new Releaser(
   new DebugLogger(Releaser.name),
   new ConfigStoreConfig(new ConfigStore(Releaser.name)),
   new BumpFinder(CRBFinder),
-  new ChildProcessExecutorSync(),
+  new GitExecutorSync(),
   new InquirerPrompt(),
   new SemVer(),
   readPkgUp,
