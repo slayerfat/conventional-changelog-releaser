@@ -9,7 +9,7 @@ import {makeFreshGitDir} from '../helpers/makeFreshGitDir';
 describe('GitExecutorSync', () => {
   let exec: GitExecutorSync;
   beforeEach(() => {
-    makeFreshGitDir({silent: false});
+    makeFreshGitDir();
 
     exec = new GitExecutorSync();
   });
