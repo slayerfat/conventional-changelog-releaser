@@ -9,12 +9,14 @@ import {makeFreshGitDir} from '../helpers/makeFreshGitDir';
 describe('GitExecutorSync', () => {
   let exec: GitExecutorSync;
   beforeEach(() => {
-    makeFreshGitDir();
+    makeFreshGitDir({silent: false});
 
     exec = new GitExecutorSync();
   });
 
   afterEach(() => shell.cd('../'));
+
+  after(() => shell.rm('-rf', '.tmp'));
 
   it('should be constructed', () => {
     expect(exec).to.be.ok;
