@@ -36,7 +36,6 @@
     "sourceMap": true,
     "instrument": true,
     "cache": true,
-    "all": true,
     "silent": true
   },
   "repository": {
