@@ -12,7 +12,8 @@ install:
   - npm install
 
 before_script:
-  - npm run tsc
+  - git config user.email "travis@test.com"
+  - git config user.name "Travis"
 
 script:
   - npm test
