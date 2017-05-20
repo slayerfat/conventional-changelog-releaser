@@ -10,12 +10,34 @@
   "scripts": {
     "commitmsg": "validate-commit-msg",
     "debug": "DEBUG=* node --require pretty-error/start lib/main.js",
+    "mocha": "mocha -r ts-node/register test/**/*.spec.ts",
     "prepublish": "tsc",
     "test": "npm run mocha && npm run tslint",
-    "mocha": "mocha -r ts-node/register test/**/*.spec.ts",
+    "test:coverage": "nyc mocha",
+    "test:coveralls": "nyc report --reporter=text-lcov | coveralls",
     "tsc": "tsc",
     "tsc:w": "tsc -w",
     "tslint": "tslint -c tslint.json src/**"
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "text-summary",
+      "html"
+    ],
+    "sourceMap": true,
+    "instrument": true,
+    "cache": true,
+    "all": true,
+    "silent": true
   },
   "repository": {
     "type": "git",
@@ -40,11 +62,15 @@
     "@types/winston": "^2.3.1",
     "chai": "^3.5.0",
     "child-process-promise": "^2.2.1",
+    "coveralls": "^2.13.1",
     "dirty-chai": "^1.2.2",
     "husky": "^0.13.3",
     "inquirer-test": "^1.0.5",
     "mocha": "^3.3.0",
+    "mocha-lcov-reporter": "^1.3.0",
+    "nyc": "^10.3.2",
     "shelljs": "^0.7.7",
+    "source-map-support": "^0.4.15",
     "ts-node": "^3.0.2",
     "tslint": "^5.1.0",
     "typescript": "^2.3.2",

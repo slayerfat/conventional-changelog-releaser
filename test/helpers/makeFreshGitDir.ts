@@ -8,7 +8,9 @@ import {writeFileSync} from 'fs';
  * @param {boolean} options.silent
  */
 export function makeFreshGitDir(options?: {silent?: boolean}) {
-  shell.config.silent = options.silent || false;
+  options = options || {};
+
+  shell.config.silent = options.silent || true;
 
   shell.rm('-rf', '.tmp');
   shell.mkdir('.tmp');
