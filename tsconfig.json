@@ -10,7 +10,8 @@
       "es6"
     ]
   },
-  "files": [
-    "src/main.ts"
+  "exclude": [
+    "lib",
+    "node_modules"
   ]
 }

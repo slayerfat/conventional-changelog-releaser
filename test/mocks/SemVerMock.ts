@@ -1,10 +1,12 @@
 import {ISemVer} from '../../src/semver/ISemVer';
+import {AbstractMockWithResponses, IMockResponse} from './AbstractMockWithResponses';
 
-export class SemVerMock implements ISemVer {
-  private responses: Array<{v: string, response: string}> = [];
+export class SemVerMock extends AbstractMockWithResponses implements ISemVer {
 
-  public valid(v: string, loose?: boolean): string {
-    return null;
+  public valid(label: string, loose?: boolean): string {
+    const results = this.findResponse('valid', {label});
+
+    return results.response;
   }
 
   public inc(v: string, release: string, loose?: boolean): string {

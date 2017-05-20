@@ -1,16 +1,17 @@
 import {IPrompt} from '../../src/prompt/IPrompt';
-export class PromptMock implements IPrompt {
-  private response: any = true;
+import {AbstractMockWithResponses} from './AbstractMockWithResponses';
 
-  public setResponse(response) {
-    this.response = response;
-  }
+export class PromptMock extends AbstractMockWithResponses implements IPrompt {
 
   public confirm(message: string): Promise<boolean> {
-    return Promise.resolve(this.response);
+    const results = this.findResponse('confirm', {message});
+
+    return Promise.resolve(results.response);
   }
 
   public list(message: string, choices: string[]): Promise<string> {
-    return Promise.resolve(this.response);
+    const results = this.findResponse('list', {message});
+
+    return Promise.resolve(results.response);
   }
 }

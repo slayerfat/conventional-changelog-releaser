@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 
 import * as ConfigStore from 'configstore';
-import * as readPkgUp from 'read-pkg-up';
 import * as CRBFinder from 'conventional-recommended-bump';
 import * as PrettyError from 'pretty-error';
+import * as readPkgUp from 'read-pkg-up';
 import {BumpFinder} from './bumpFinder/BumpFinder';
-import {ChildProcessPromiseExecutor} from './exec/ChildProcessPromiseExecutor';
 import {ConfigStoreConfig} from './config/ConfigStoreConfig';
 import {DebugLogger} from './debug/DebugLogger';
+import {GitExecutorSync} from './exec/GitExecutorSync';
 import {InquirerPrompt} from './prompt/InquirerPrompt';
 import {MeowCliBootstrap} from './cli/MeowCliBootstrap';
 import {Releaser} from './Releaser';
 import {SemVer} from './semver/SemVer';
+import {UserAbortedError} from './exceptions/UserAbortedError';
 
 const debug = new DebugLogger('main');
 debug.debug('starting');
@@ -24,7 +25,7 @@ const rel = new Releaser(
   new DebugLogger(Releaser.name),
   new ConfigStoreConfig(new ConfigStore(Releaser.name)),
   new BumpFinder(CRBFinder),
-  new ChildProcessPromiseExecutor(),
+  new GitExecutorSync(),
   new InquirerPrompt(),
   new SemVer(),
   readPkgUp,
@@ -32,4 +33,12 @@ const rel = new Releaser(
 
 rel.init()
   .then(() => debug.debug('cli finished successfully'))
-  .catch(err => debug.error(err));
+  .catch(reason => {
+    if (reason instanceof UserAbortedError) {
+      return this.logger.info('Aborting.');
+    } else if (reason === Releaser.errors.noNewCommit) {
+      return this.logger.warn(Releaser.errors.noNewCommit);
+    }
+
+    throw reason;
+  });
