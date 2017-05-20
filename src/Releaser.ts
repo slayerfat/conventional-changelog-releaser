@@ -129,7 +129,7 @@ export class Releaser {
     let hash;
 
     try {
-      hash = this.gitExec.getHashFromTag(currentTag);
+      hash = this.gitExec.getHashFromLabel(currentTag);
     } catch (err) {
       // tag label not found
       if (err.code === 1) {
@@ -299,7 +299,7 @@ export class Releaser {
    */
   private async syncSemVerVersions(): Promise<void> {
     const tags = this.config.isPackageJsonValid() ?
-      [this.config.getPackageJsonVersion()] : this.gitExec.getAllSemVerTags();
+      [this.config.getPackageJsonVersion()] : this.gitExec.getAllTagsWithRegex();
 
     if (tags.length === 0) {
       this.config.deleteCurrentSemVer();

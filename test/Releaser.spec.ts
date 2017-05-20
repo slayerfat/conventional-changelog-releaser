@@ -3,6 +3,7 @@ import {BumpFinderMock} from './mocks/BumpFinderMock';
 import {CliBootstrapMock} from './mocks/MeowCLIMock';
 import {ConfigMock} from './mocks/ConfigMock';
 import {expect} from 'chai';
+import {GitExecutorSync} from '../src/exec/GitExecutorSync';
 import {IBumpFinder} from '../src/bumpFinder/IBumpFinder';
 import {ICliBootstrap} from '../src/cli/ICliBootstrap';
 import {IConfig} from '../src/config/IConfig';
@@ -10,12 +11,11 @@ import {ILogger} from '../src/debug/ILogger';
 import {IPrompt} from '../src/prompt/IPrompt';
 import {ISemVer} from '../src/semver/ISemVer';
 import {LoggerMock} from './mocks/LoggerMock';
+import {makeFreshGitDir} from './helpers/makeFreshGitDir';
 import {PromptMock} from './mocks/PromptMock';
 import {readPkgUp as TReadPkgUp} from '../src/others/types';
 import {Releaser} from '../src/Releaser';
 import {SemVer} from '../src/semver/SemVer';
-import {writeFileSync} from 'fs';
-import {GitExecutorSync} from '../src/exec/GitExecutorSync';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -55,13 +55,7 @@ describe('Releaser CLI', () => {
   }
 
   beforeEach(() => {
-    shell.config.silent = true;
-    shell.rm('-rf', '.tmp');
-    shell.mkdir('.tmp');
-    shell.cd('.tmp');
-    shell.exec('git init');
-    writeFileSync('test', '');
-    shell.exec('git add --all && git commit -m "initial commit"');
+    makeFreshGitDir();
 
     releaser = makeNewReleaser({});
   });

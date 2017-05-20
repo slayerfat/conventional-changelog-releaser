@@ -1,5 +1,10 @@
 import {ChildProcessExecutorSync} from './ChildProcessExecutorSync';
+
 export class GitExecutorSync extends ChildProcessExecutorSync {
+
+  public perform(command: string): string {
+    return super.perform(command).replace('\n', '');
+  }
 
   /**
    * Gets the number of commits from the hash given to HEAD.
@@ -21,13 +26,21 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
   }
 
   /**
-   * Gets a hash from a given tag.
+   * Gets a hash from a given label.
    *
-   * @param {string} tag The tag to get the hash from.
+   * @param {string} label The label to get the hash from.
    * @returns {string}
    */
-  public getHashFromTag(tag: string): string {
-    return this.perform(`git show-ref -s ${tag}`);
+  public getHashFromLabel(label: string): string {
+    try {
+      return this.perform(`git show-ref -s ${label}`);
+    } catch (err) {
+      if (/Command failed/.test(err.message)) {
+        throw new Error(`Label ${label} not found.`);
+      }
+
+      throw err;
+    }
   }
 
   /**
@@ -47,16 +60,7 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
    * @return {void}
    */
   public createTag(label: string): void {
-    try {
-      this.perform(`git tag ${label}`);
-    } catch (err) {
-      // TODO find new error object in executor
-      if (err.code === 128 && /already exists/.test(err.stderr)) {
-        throw new Error(err.stderr);
-      }
-
-      throw err;
-    }
+    this.perform(`git tag ${label}`);
   }
 
   /**
@@ -81,8 +85,8 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
    *
    * @return {string[]}
    */
-  public getAllSemVerTags(regex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/): string[] {
-    return this.perform('git tag').split('\n')
+  public getAllTagsWithRegex(regex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/): string[] {
+    return super.perform('git tag').split('\n')
       .filter(tag => tag.length > 1)
       .filter(tag => regex.test(tag));
   }
