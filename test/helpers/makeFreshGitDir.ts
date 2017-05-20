@@ -4,10 +4,12 @@ import {writeFileSync} from 'fs';
 /**
  * From the cwd recreates a temp folder and init git.
  *
- * @param {boolean} silent
+ * @param {object} options
+ * @param {boolean} options.silent
  */
-export function makeFreshGitDir(silent = true) {
-  shell.config.silent = silent;
+export function makeFreshGitDir(options?: {silent?: boolean}) {
+  shell.config.silent = options.silent || false;
+
   shell.rm('-rf', '.tmp');
   shell.mkdir('.tmp');
   shell.cd('.tmp');
