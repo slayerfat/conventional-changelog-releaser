@@ -22,6 +22,7 @@ import {GitExecutorSync} from '../src/exec/GitExecutorSync';
 
 describe('Releaser CLI', () => {
   let releaser: Releaser;
+  const gitExec = new GitExecutorSync();
 
   function makeNewPkgUpFunction(file?: any) {
     return () => Promise.resolve(file || {});
@@ -47,7 +48,7 @@ describe('Releaser CLI', () => {
     pkgUp  = pkgUp || makeNewPkgUpFunction();
 
     // non-mocks
-    exec   = exec || new GitExecutorSync();
+    exec   = exec || gitExec;
     semver = semver || new SemVer();
 
     return new Releaser(cli, logger, config, bump, exec, prompt, semver, pkgUp);
@@ -74,8 +75,10 @@ describe('Releaser CLI', () => {
   });
 
   describe('No tag and no package.json are found', () => {
-    xit('should bump to v0.1.0', done => {
+    it('should bump to v0.1.0 if user continues', done => {
       releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+
         done();
       }).catch(err => done(err));
     });
