@@ -4,6 +4,15 @@ export class UserAbortedError extends Error {
     message: 'User aborted the execution',
   };
 
+  /**
+   * Gets the default error message.
+   *
+   * @return {string}
+   */
+  public static getMessage() {
+    return this.defaultState.message;
+  }
+
   public code: number;
 
   constructor(message?: string, code?: number) {

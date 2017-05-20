@@ -93,6 +93,7 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
 
   /**
    * Checks if the given tag is present in the repository.
+   * This could be if the package.json or internal config versions have no related tag
    *
    * @link http://stackoverflow.com/a/43156178
    * @param {string} label

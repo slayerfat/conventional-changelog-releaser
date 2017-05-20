@@ -34,7 +34,8 @@ export abstract class AbstractMockWithResponses {
    * Sets the mock response in the class.
    *
    * @param {string} method The method associated with this response (valid, rCompare, etc).
-   * @param {object} operators The tag label to
+   * @param {object} operators The object that contains the expected param with the value
+   *                           example: {param: value} (the mocked method param)
    * @param {*} response The response the method should give
    */
   public setResponse(method: string, operators: {[name: string]: string}, response: any) {
@@ -45,5 +46,5 @@ export abstract class AbstractMockWithResponses {
 export interface IMockResponse {
   method: string;
   operators: {[name: string]: string};
-  response: string;
+  response: any;
 }

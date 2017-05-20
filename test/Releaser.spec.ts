@@ -16,6 +16,7 @@ import {PromptMock} from './mocks/PromptMock';
 import {readPkgUp as TReadPkgUp} from '../src/others/types';
 import {Releaser} from '../src/Releaser';
 import {SemVer} from '../src/semver/SemVer';
+import {UserAbortedError} from '../src/exceptions/UserAbortedError';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -69,7 +70,16 @@ describe('Releaser CLI', () => {
   });
 
   describe('No tag and no package.json are found', () => {
-    it('should bump to v0.1.0 if user continues', done => {
+    let prompt;
+
+    beforeEach(() => prompt = new PromptMock());
+
+    it('should bump to minor (v0.1.0) if user continues', done => {
+      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
+      prompt.setResponse('confirm', {message: 'No tags are found. Create first tag?'}, true);
+
+      releaser = makeNewReleaser({prompt});
+
       releaser.init().then(() => {
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
 
@@ -77,8 +87,45 @@ describe('Releaser CLI', () => {
       }).catch(err => done(err));
     });
 
-    xit('should abort if user cancels', done => {
+    it('should abort if user cancels at no valid semver tags found prompt', done => {
+      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, false);
+
+      releaser = makeNewReleaser({prompt});
+
+      releaser.init().catch(err => {
+        expect(err.message).to.equal(UserAbortedError.getMessage());
+
+        done();
+      });
+    });
+
+    it('should abort if user cancels at create first tag prompt', done => {
+      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
+      prompt.setResponse('confirm', {message: 'No tags are found. Create first tag?'}, false);
+
+      releaser = makeNewReleaser({prompt});
+
+      releaser.init().catch(err => {
+        expect(err.message).to.equal(UserAbortedError.getMessage());
+
+        done();
+      });
+    });
+  });
+
+  describe('invalid tag and no package.json are found', () => {
+    let prompt;
+
+    beforeEach(() => prompt = new PromptMock());
+
+    xit('should ask user when tag is not present in repository', done => {
+      gitExec.createTag('0.1.0');
+
+      releaser = makeNewReleaser({prompt});
+
       releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+
         done();
       }).catch(err => done(err));
     });
