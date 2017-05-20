@@ -27,7 +27,7 @@ describe('GitExecutorSync', () => {
       expect(exec.isTagPresent('test')).to.be.false;
     });
 
-    it('should be false if no tag present', () => {
+    it('should be true if the tag given is present', () => {
       shell.exec('git tag test');
       expect(exec.isTagPresent('test')).to.be.true;
     });
