@@ -1,4 +1,5 @@
 import {ILogger} from '../../src/debug/ILogger';
+
 export class LoggerMock implements ILogger {
 
   public info(message: string): void {

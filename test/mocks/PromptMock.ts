@@ -1,4 +1,5 @@
 import {IPrompt} from '../../src/prompt/IPrompt';
+
 export class PromptMock implements IPrompt {
   private response: any = true;
 

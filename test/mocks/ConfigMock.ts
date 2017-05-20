@@ -9,7 +9,7 @@ export class ConfigMock implements IConfig {
   }
 
   public getConfig(name: string): any {
-    return this.config[name] !== undefined;
+    return this.config[name];
   }
 
   public setPackageJson(value: IPkgUpResultObject): void {

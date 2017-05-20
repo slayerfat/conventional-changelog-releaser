@@ -1,11 +1,14 @@
-import {ICliBootstrap} from '../../src/cli/ICliBootstrap';
 import {IFlagsObject} from '../../src/cli/IFlagsObject';
 import {MeowCliBootstrap} from '../../src/cli/MeowCliBootstrap';
 
 export class CliBootstrapMock extends MeowCliBootstrap {
   private inputs: string[] = [];
 
-  private flags: IFlagsObject = {};
+  private flags: IFlagsObject = {
+    auto:   true,
+    commit: true,
+    prefix: true,
+  };
 
   public init() {
     //
