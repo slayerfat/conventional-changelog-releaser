@@ -12,7 +12,7 @@ import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 
 const enum BRANCH_STATUSES {
-  FORCED_BUMP = 1,
+  FIRST_TAG   = 1,
   INVALID_TAG = 2,
   NO_TAG      = 3,
   VALID       = 4,
@@ -42,6 +42,13 @@ export class Releaser {
    * @type {string}
    */
   private currentSearchPath: string;
+
+  /**
+   * The first tag value, used on first bump.
+   *
+   * @type {string}
+   */
+  private firstLabel = '0.1.0';
 
   /**
    * Construct a new Releaser with the given parameters.
@@ -114,16 +121,18 @@ export class Releaser {
       return BRANCH_STATUSES.NO_TAG;
     }
 
-    const currentTag = this.getCurrentTagFromConfig();
+    const currentTag = this.updateLabelPrefix(this.getCurrentTag());
 
-    if (!this.gitExec.isTagPresent(currentTag)) {
+    // checks if current tag from either package.json or config
+    // is present in repository, if not ask user to continue or abort
+    if (!this.isTagPresent(currentTag)) {
       const answer = await this.prompt.confirm(
         `Tag ${currentTag} is not present in repository, continue?`,
       );
 
       if (answer === false) throw new UserAbortedError();
 
-      return BRANCH_STATUSES.FORCED_BUMP;
+      return BRANCH_STATUSES.FIRST_TAG;
     }
 
     let hash;
@@ -151,11 +160,9 @@ export class Releaser {
    *
    * @return {string}
    */
-  private getCurrentTagFromConfig(prefixed = this.cli.hasPrefix()): string {
-    const version = this.config.isPackageJsonValid() ?
+  private getCurrentTag(): string {
+    return this.config.isPackageJsonValid() ?
       this.config.getPackageJsonVersion() : this.config.getCurrentSemVer();
-
-    return prefixed ? 'v'.concat(version) : version;
   }
 
   /**
@@ -277,14 +284,15 @@ export class Releaser {
 
         return this.handleBumpLabelCommit();
       case BRANCH_STATUSES.VALID:
-      case BRANCH_STATUSES.FORCED_BUMP:
         return this.handleBumpLabelCommit();
+      case BRANCH_STATUSES.FIRST_TAG:
+        return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));
       case BRANCH_STATUSES.NO_TAG:
         const answer = await this.prompt.confirm(`${Releaser.errors.noTag} Create first tag?`);
 
         if (answer === false) throw new UserAbortedError();
 
-        return this.handleBumpLabelCommit();
+        return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));
       case BRANCH_STATUSES.INVALID_TAG:
         throw new Error(Releaser.errors.invalidTag);
       default:
@@ -325,7 +333,7 @@ export class Releaser {
       return;
     }
 
-    this.config.setCurrentSemVer('0.0.1');
+    this.config.setCurrentSemVer(this.firstLabel);
   }
 
   /**
@@ -338,7 +346,7 @@ export class Releaser {
   private constructNewLabel(name: string, type: string) {
     const label = this.incrementSemVer(name, type);
 
-    return this.cli.hasPrefix() ? 'v'.concat(label) : label;
+    return this.updateLabelPrefix(label);
   }
 
   /**
@@ -379,10 +387,9 @@ export class Releaser {
     }
   }
 
-  private handleBumpLabelCommit(): void {
-    const label = this.constructNewLabel(this.getCurrentTagFromConfig(), this.getBumpType());
-
-    this.gitExec.createTag(label);
+  private handleBumpLabelCommit(label?: string): void {
+    label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
+    this.createTag(label);
 
     if (this.config.isPackageJsonValid()) {
       this.config.setPackageJsonVersion(label);
@@ -398,5 +405,50 @@ export class Releaser {
     }
 
     this.logger.info(`Bump to ${label} completed, no commits made.`);
+  }
+
+  /**
+   * Creates a new tag checking if should be prefixed.
+   *
+   * @param {string} label The label to tag
+   */
+  private createTag(label: string): void {
+    if (this.semver.valid(label)) {
+      const label2 = this.updateLabelPrefix(label);
+      return this.gitExec.createTag(label2);
+    }
+
+    throw new Error(`Invalid label ${label}, will not continue.`);
+  }
+
+  /**
+   * Search the label with git, with or without prefix.
+   *
+   * @param {string} label The label to search
+   * @return {boolean}
+   */
+  private isTagPresent(label: string): boolean {
+    return this.gitExec.isTagPresent(this.updateLabelPrefix(label));
+  }
+
+  /**
+   * Adds or removes the prefix according to the prefix flag.
+   *
+   * @param {string} label The label to alter
+   * @param {boolean} isPrefixed The prefix flag
+   * @return {string}
+   */
+  private updateLabelPrefix(label: string, isPrefixed = this.cli.hasPrefix()): string {
+    if (!GitExecutorSync.validSemVerRegex.test(label)) {
+      throw new Error(`Invalid label ${label} given, wont update.`);
+    } else if (isPrefixed) {
+      if (/^v/.test(label)) {
+        return label;
+      }
+
+      return 'v'.concat(label);
+    }
+
+    return label.replace(/^v/, '');
   }
 }

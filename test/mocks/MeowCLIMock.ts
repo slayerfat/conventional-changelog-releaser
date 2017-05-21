@@ -31,11 +31,11 @@ export class CliBootstrapMock extends MeowCliBootstrap {
     process.exit(0);
   }
 
-  public setFlag(name, value) {
-    // this.
+  public setFlag(name, value): void {
+    this.flags[name] = value;
   }
 
-  public setInput(name, value) {
-    //
+  public setInput(name, value): void {
+    this.inputs[name] = value;
   }
 }

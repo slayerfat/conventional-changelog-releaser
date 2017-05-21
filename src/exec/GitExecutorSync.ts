@@ -2,6 +2,28 @@ import {ChildProcessExecutorSync} from './ChildProcessExecutorSync';
 
 export class GitExecutorSync extends ChildProcessExecutorSync {
 
+  /**
+   * This regex matches tags with a valid semver.
+   *
+   * ^ asserts position at start of a line
+   * v? matches the 'variable prefix' literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \-? matches the character - literally (case sensitive)
+   * Non-capturing group (?:\d*|\w*\.\d+)
+   *    1st Alternative \d*
+   *      \d* matches a digit (equal to [0-9])
+   *    2nd Alternative \w*\.\d+
+   *      \w* matches any word character (equal to [a-zA-Z0-9_])
+   *      \. matches the character . literally (case sensitive)
+   *      \d+ matches a digit (equal to [0-9])
+   * @type {RegExp}
+   */
+  public static validSemVerRegex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
+
   public perform(command: string): string {
     return super.perform(command).replace('\n', '');
   }
@@ -66,26 +88,11 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
   /**
    * Gets all the valid semantic version tags.
    *
-   * @param {RegExp} regex This regex matches tags with a valid semver.
-   * ^ asserts position at start of a line
-   * v? matches the 'variable prefix' literally (case sensitive)
-   * \d+ matches a digit (equal to [0-9])
-   * \. matches the character . literally (case sensitive)
-   * \d+ matches a digit (equal to [0-9])
-   * \. matches the character . literally (case sensitive)
-   * \d+ matches a digit (equal to [0-9])
-   * \-? matches the character - literally (case sensitive)
-   * Non-capturing group (?:\d*|\w*\.\d+)
-   *    1st Alternative \d*
-   *      \d* matches a digit (equal to [0-9])
-   *    2nd Alternative \w*\.\d+
-   *      \w* matches any word character (equal to [a-zA-Z0-9_])
-   *      \. matches the character . literally (case sensitive)
-   *      \d+ matches a digit (equal to [0-9])
+   * @param {RegExp} regex
    *
    * @return {string[]}
    */
-  public getAllTagsWithRegex(regex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/): string[] {
+  public getAllTagsWithRegex(regex = GitExecutorSync.validSemVerRegex): string[] {
     return super.perform('git tag').split('\n')
       .filter(tag => tag.length > 1)
       .filter(tag => regex.test(tag));

@@ -32,13 +32,6 @@ export interface IConfigStore {
   set(key: string, val: any): void;
 
   /**
-   * Set all key/value pairs declared.
-   *
-   * @param values The values object.
-   */
-  set(values: any): void;
-
-  /**
    * Determines if a key is present in the config.
    *
    * @param key The string key to test for

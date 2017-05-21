@@ -17,6 +17,7 @@ import {readPkgUp as TReadPkgUp} from '../src/others/types';
 import {Releaser} from '../src/Releaser';
 import {SemVer} from '../src/semver/SemVer';
 import {UserAbortedError} from '../src/exceptions/UserAbortedError';
+import {IPkgUpResultObject} from '../src/config/IPkgResultObject';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -25,8 +26,15 @@ describe('Releaser CLI', () => {
   let releaser: Releaser;
   const gitExec = new GitExecutorSync();
 
-  function makeNewPkgUpFunction(file?: any) {
+  function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
     return () => Promise.resolve(file || {});
+  }
+
+  function makeNewPkgUpFileObject(
+    pkg  = {version: '1.0.0'},
+    path = shell.pwd().toString(),
+  ): IPkgUpResultObject {
+    return {length: 1, path, pkg};
   }
 
   function makeNewReleaser(options?: {
@@ -69,7 +77,7 @@ describe('Releaser CLI', () => {
     expect(releaser).to.be.ok;
   });
 
-  describe('No tag and no package.json are found', () => {
+  describe('No tag and no package.json', () => {
     let prompt;
 
     beforeEach(() => prompt = new PromptMock());
@@ -87,7 +95,7 @@ describe('Releaser CLI', () => {
       }).catch(err => done(err));
     });
 
-    it('should abort if user cancels at no valid semver tags found prompt', done => {
+    it('should abort if user cancels at "no valid semver tags found" prompt', done => {
       prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, false);
 
       releaser = makeNewReleaser({prompt});
@@ -99,7 +107,7 @@ describe('Releaser CLI', () => {
       });
     });
 
-    it('should abort if user cancels at create first tag prompt', done => {
+    it('should abort if user cancels at "create first tag" prompt', done => {
       prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
       prompt.setResponse('confirm', {message: 'No tags are found. Create first tag?'}, false);
 
@@ -113,15 +121,67 @@ describe('Releaser CLI', () => {
     });
   });
 
-  describe('invalid tag and no package.json are found', () => {
+  describe('invalid tag', () => {
     let prompt;
 
     beforeEach(() => prompt = new PromptMock());
 
-    xit('should ask user when tag is not present in repository', done => {
+    it('should ask user about valid non-prefixed semver with prefix flag as true', done => {
       gitExec.createTag('0.1.0');
+      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
+      // 0.1.0 since by default we start as a feature (minor) bump.
+      const message = 'Tag v0.1.0 is not present in repository, continue?';
+      prompt.setResponse('confirm', {message}, true);
 
       releaser = makeNewReleaser({prompt});
+
+      releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+
+        done();
+      }).catch(err => done(err));
+    });
+
+    it('should ask user about valid prefixed semver with prefix flag as false', done => {
+      gitExec.createTag('v0.1.0');
+
+      const cli = new CliBootstrapMock();
+      cli.setFlag('prefix', false);
+
+      // 0.1.0 since by default we start as a feature (minor) bump.
+      const message = 'Tag 0.1.0 is not present in repository, continue?';
+      prompt.setResponse('confirm', {message}, true);
+
+      releaser = makeNewReleaser({prompt, cli});
+
+      releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+
+        done();
+      }).catch(err => done(err));
+    });
+
+    it('should throw no new commits when prefix is set to false with valid tag', done => {
+      gitExec.createTag('0.1.0');
+
+      const cli = new CliBootstrapMock();
+      cli.setFlag('prefix', false);
+
+      releaser = makeNewReleaser({cli});
+
+      releaser.init().catch(err => {
+        expect(err.message).to.equal(Releaser.errors.noNewCommit);
+
+        done();
+      });
+    });
+
+    xit('should check package.json first', done => {
+      gitExec.createTag('invalid-tag');
+
+      const pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject());
+
+      releaser = makeNewReleaser({prompt, pkgUp});
 
       releaser.init().then(() => {
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
