@@ -24,7 +24,12 @@ import {IPkgUpResultObject} from '../src/config/IPkgResultObject';
 
 describe('Releaser CLI', () => {
   let releaser: Releaser;
-  const gitExec = new GitExecutorSync();
+  let prompt;
+  const gitExec  = new GitExecutorSync();
+  const messages = {
+    noTag:      'No tags are found. Create first tag?',
+    noValidTag: 'No valid semver tags found, continue?',
+  };
 
   function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
     return () => Promise.resolve(file || {});
@@ -43,30 +48,31 @@ describe('Releaser CLI', () => {
     config?: IConfig,
     bump?: IBumpFinder,
     exec?: GitExecutorSync,
-    prompt?: IPrompt,
+    fPrompt?: IPrompt,
     semver?: ISemVer,
     pkgUp?: TReadPkgUp,
   }) {
-    let {cli, logger, config, bump, exec, prompt, semver, pkgUp} = options;
+    let {cli, logger, config, bump, exec, fPrompt, semver, pkgUp} = options;
 
-    cli    = cli || new CliBootstrapMock();
-    logger = logger || new LoggerMock();
-    config = config || new ConfigMock();
-    bump   = bump || new BumpFinderMock();
-    prompt = prompt || new PromptMock();
-    pkgUp  = pkgUp || makeNewPkgUpFunction();
+    cli     = cli || new CliBootstrapMock();
+    logger  = logger || new LoggerMock();
+    config  = config || new ConfigMock();
+    bump    = bump || new BumpFinderMock();
+    fPrompt = fPrompt || new PromptMock();
+    pkgUp   = pkgUp || makeNewPkgUpFunction();
 
     // non-mocks
     exec   = exec || gitExec;
     semver = semver || new SemVer();
 
-    return new Releaser(cli, logger, config, bump, exec, prompt, semver, pkgUp);
+    return new Releaser(cli, logger, config, bump, exec, fPrompt, semver, pkgUp);
   }
 
   beforeEach(() => {
     makeFreshGitDir();
 
     releaser = makeNewReleaser({});
+    prompt   = new PromptMock();
   });
 
   afterEach(() => shell.cd('../'));
@@ -77,16 +83,12 @@ describe('Releaser CLI', () => {
     expect(releaser).to.be.ok;
   });
 
-  describe('No tag and no package.json', () => {
-    let prompt;
-
-    beforeEach(() => prompt = new PromptMock());
-
+  describe('case: no tag and no package.json', () => {
     it('should bump to minor (v0.1.0) if user continues', done => {
-      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
-      prompt.setResponse('confirm', {message: 'No tags are found. Create first tag?'}, true);
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
 
-      releaser = makeNewReleaser({prompt});
+      releaser = makeNewReleaser({fPrompt: prompt});
 
       releaser.init().then(() => {
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
@@ -96,9 +98,9 @@ describe('Releaser CLI', () => {
     });
 
     it('should abort if user cancels at "no valid semver tags found" prompt', done => {
-      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, false);
+      prompt.setResponse('confirm', {message: messages.noValidTag}, false);
 
-      releaser = makeNewReleaser({prompt});
+      releaser = makeNewReleaser({fPrompt: prompt});
 
       releaser.init().catch(err => {
         expect(err.message).to.equal(UserAbortedError.getMessage());
@@ -108,10 +110,10 @@ describe('Releaser CLI', () => {
     });
 
     it('should abort if user cancels at "create first tag" prompt', done => {
-      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
-      prompt.setResponse('confirm', {message: 'No tags are found. Create first tag?'}, false);
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, false);
 
-      releaser = makeNewReleaser({prompt});
+      releaser = makeNewReleaser({fPrompt: prompt});
 
       releaser.init().catch(err => {
         expect(err.message).to.equal(UserAbortedError.getMessage());
@@ -121,19 +123,15 @@ describe('Releaser CLI', () => {
     });
   });
 
-  describe('invalid tag', () => {
-    let prompt;
-
-    beforeEach(() => prompt = new PromptMock());
-
+  describe('case: tag and no package.json', () => {
     it('should ask user about valid non-prefixed semver with prefix flag as true', done => {
       gitExec.createTag('0.1.0');
-      prompt.setResponse('confirm', {message: 'No valid semver tags found, continue?'}, true);
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       // 0.1.0 since by default we start as a feature (minor) bump.
       const message = 'Tag v0.1.0 is not present in repository, continue?';
       prompt.setResponse('confirm', {message}, true);
 
-      releaser = makeNewReleaser({prompt});
+      releaser = makeNewReleaser({fPrompt: prompt});
 
       releaser.init().then(() => {
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
@@ -152,7 +150,7 @@ describe('Releaser CLI', () => {
       const message = 'Tag 0.1.0 is not present in repository, continue?';
       prompt.setResponse('confirm', {message}, true);
 
-      releaser = makeNewReleaser({prompt, cli});
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
 
       releaser.init().then(() => {
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
@@ -175,19 +173,36 @@ describe('Releaser CLI', () => {
         done();
       });
     });
+  });
 
-    xit('should check package.json first', done => {
-      gitExec.createTag('invalid-tag');
+  describe('case: no tag and package', () => {
+    let config;
+    let pkgUp;
 
-      const pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject());
+    beforeEach(() => {
+      config = new ConfigMock();
+      pkgUp  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
 
-      releaser = makeNewReleaser({prompt, pkgUp});
+      // config.setPackageJsonValidity(true);
+      // config.setPackageJsonVersion('3.0.0');
+      // config.setPackageJsonExhaustStatus(false);
+    });
 
-      releaser.init().then(() => {
-        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+    xdescribe('package.json found prompt', () => {
+      it('should prompt user about file discovery', (done) => {
+        const pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
 
-        done();
-      }).catch(err => done(err));
+        prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+        prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+        releaser = makeNewReleaser({fPrompt: prompt, pkgUp, config});
+
+        releaser.init().then(() => {
+          expect(gitExec.isTagPresent('v3.0.0')).to.be.true;
+
+          done();
+        }).catch(err => done(err));
+      });
     });
   });
 });
