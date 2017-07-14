@@ -121,7 +121,7 @@ export class Releaser {
       return BRANCH_STATUSES.NO_TAG;
     }
 
-    const currentTag = this.updateLabelPrefix(this.getCurrentTag());
+    let currentTag = this.updateLabelPrefix(this.getCurrentTag());
 
     // checks if current tag from either package.json or config
     // is present in repository, if not ask user to continue or abort
@@ -132,7 +132,15 @@ export class Releaser {
 
       if (answer === false) throw new UserAbortedError();
 
-      return BRANCH_STATUSES.FIRST_TAG;
+      const existingTags = this.cli.hasPrefix() ?
+        this.gitExec.getAllTagsWithRegex(GitExecutorSync.prefixedValidSemVerRegex) :
+        this.gitExec.getAllTagsWithRegex(GitExecutorSync.noPrefixValidSemVerRegex);
+
+      if (existingTags.length === 0) {
+        return BRANCH_STATUSES.FIRST_TAG;
+      }
+
+      currentTag = existingTags.pop();
     }
 
     let hash;
@@ -289,6 +297,12 @@ export class Releaser {
       case BRANCH_STATUSES.FIRST_TAG:
         return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));
       case BRANCH_STATUSES.NO_TAG:
+        if (this.config.isPackageJsonValid()) {
+          const label = this.updateLabelPrefix(this.config.getPackageJsonVersion());
+
+          return this.handleBumpLabelCommit(label);
+        }
+
         const answer = await this.prompt.confirm(`${Releaser.errors.noTag} Create first tag?`);
 
         if (answer === false) throw new UserAbortedError();
@@ -388,6 +402,11 @@ export class Releaser {
     }
   }
 
+  /**
+   * Handles a new commit bump event.
+   *
+   * @param label
+   */
   private handleBumpLabelCommit(label?: string): void {
     label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
     this.createTag(label);

@@ -14,6 +14,7 @@ export class ConfigMock implements IConfig {
 
   public setPackageJson(value: IPkgUpResultObject): void {
     this.setConfig('package.json', value);
+    this.setPackageJsonVersion(value.pkg.version);
   }
 
   public getPackageJson(): IPkgUpResultObject {

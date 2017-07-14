@@ -24,6 +24,49 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
    */
   public static validSemVerRegex = /^v?\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
 
+  /**
+   * This regex matches tags with a valid semver and no prefix.
+   *
+   * ^ asserts position at start of a line
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \-? matches the character - literally (case sensitive)
+   * Non-capturing group (?:\d*|\w*\.\d+)
+   *    1st Alternative \d*
+   *      \d* matches a digit (equal to [0-9])
+   *    2nd Alternative \w*\.\d+
+   *      \w* matches any word character (equal to [a-zA-Z0-9_])
+   *      \. matches the character . literally (case sensitive)
+   *      \d+ matches a digit (equal to [0-9])
+   * @type {RegExp}
+   */
+  public static noPrefixValidSemVerRegex = /^\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
+
+  /**
+   * This regex matches tags with a valid semver with prefix.
+   *
+   * ^ asserts position at start of a line
+   * v matches the 'variable prefix' literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \. matches the character . literally (case sensitive)
+   * \d+ matches a digit (equal to [0-9])
+   * \-? matches the character - literally (case sensitive)
+   * Non-capturing group (?:\d*|\w*\.\d+)
+   *    1st Alternative \d*
+   *      \d* matches a digit (equal to [0-9])
+   *    2nd Alternative \w*\.\d+
+   *      \w* matches any word character (equal to [a-zA-Z0-9_])
+   *      \. matches the character . literally (case sensitive)
+   *      \d+ matches a digit (equal to [0-9])
+   * @type {RegExp}
+   */
+  public static prefixedValidSemVerRegex = /^v\d+\.\d+\.\d+-?(?:\d*|\w*\.\d+)$/;
+
   public perform(command: string): string {
     return super.perform(command).replace('\n', '');
   }
