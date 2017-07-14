@@ -22,7 +22,7 @@ export abstract class AbstractMockWithResponses {
     });
 
     if (index === -1) {
-      throw new Error(`Cannot find ${operatorName} with ${operator} in responses.`);
+      throw new Error(`Cannot find ${operatorName} with ${operator} on ${method} in responses.`);
     }
 
     const findings = this.responses.splice(index, 1);
