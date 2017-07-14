@@ -176,7 +176,8 @@ export class Releaser {
       const answer = await this.askUserIfPackageJsonFileIsCorrect(file);
       await this.handleIsPackageJsonFileIsCorrectResponse(answer);
     } catch (err) {
-      if (err === Releaser.errors.exhaustedDir || Releaser.errors.noPackage) {
+      if (err.message === Releaser.errors.exhaustedDir ||
+        err.message === Releaser.errors.noPackage) {
         return this.logger.debug(err);
       }
 
