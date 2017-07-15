@@ -24,7 +24,7 @@ export class Releaser {
   public static errors = {
     exhaustedDir: 'Exhausted all directories within repository.',
     invalidTag:   'No valid semver tag found in repository.',
-    noNewCommit:  'No new commits since last tag, aborting.',
+    noNewCommit:  'No new commits since last valid semver tag, aborting.',
     noPackage:    'No package.json found.',
     noTag:        'No tags are found.',
   };

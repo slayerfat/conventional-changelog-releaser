@@ -32,7 +32,7 @@ describe('Releaser CLI', () => {
   };
 
   function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
-    return () => Promise.resolve(file || {pkg: '', path: '', length: 1});
+    return () => Promise.resolve(file || {} as IPkgUpResultObject);
   }
 
   function makeNewPkgUpFileObject(
@@ -274,6 +274,62 @@ describe('Releaser CLI', () => {
         })
         .then(() => expect(gitExec.isTagPresent('v9.2.3')).to.be.true)
         .then(() => done())
+        .catch(err => done(err));
+    });
+  });
+
+  describe('case: tag and package', () => {
+    let pkgUp;
+    let pkgMessage;
+
+    beforeEach(() => {
+      pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
+      pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
+
+      prompt.setResponse(
+        'confirm',
+        {message: 'Tag v15.0.0 is not present in repository, continue?'},
+        true,
+      );
+    });
+
+    it('should abort if no new commits present since last valid semver tag', (done) => {
+      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+      gitExec.createTag('1.0.0');
+      gitExec.createTag('v1.0.0');
+      gitExec.createTag('something');
+      gitExec.createTag('v.1something');
+
+      releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
+
+      releaser.init()
+        .then(() => done('Should abort to noNewCommit error'))
+        .catch(err => {
+          expect(err.message).to.equal(Releaser.errors.noNewCommit);
+
+          done();
+        });
+    });
+
+    it('should bump to current package.json version', (done) => {
+      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+      gitExec.createTag('1.0.0');
+      gitExec.createTag('v1.0.0');
+      gitExec.createTag('something');
+      gitExec.createTag('v.1something');
+
+      shell.exec('touch file && git add --all && git commit -m "a commit"');
+
+      releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
+
+      releaser.init()
+        .then(() => {
+          expect(gitExec.isTagPresent('v1.1.0')).to.be.false;
+          expect(gitExec.isTagPresent('v2.0.0')).to.be.false;
+          expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+
+          done();
+        })
         .catch(err => done(err));
     });
   });
