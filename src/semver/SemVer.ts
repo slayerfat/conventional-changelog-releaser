@@ -7,7 +7,7 @@ export class SemVer implements ISemVer {
   }
 
   public inc(v: string, release: string, loose?: boolean): string {
-    return semver.inc(v, release, loose);
+    return semver.inc(v, release as any, loose);
   }
 
   public rCompare(v1: string, v2: string, loose?: boolean): number {
