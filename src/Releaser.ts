@@ -70,6 +70,7 @@ export class Releaser {
     private gitExec: GitExecutorSync,
     private prompt: IPrompt,
     private semver: ISemVer,
+    // tslint:disable-next-line no-shadowed-variable
     private readPkgUp: readPkgUp,
   ) {
     this.currentSearchPath = process.cwd();
