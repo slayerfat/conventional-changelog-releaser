@@ -293,6 +293,12 @@ export class Releaser {
 
         return this.handleBumpLabelCommit();
       case BRANCH_STATUSES.VALID:
+        if (this.config.isPackageJsonValid()) {
+          const label = this.updateLabelPrefix(this.config.getPackageJsonVersion());
+
+          return this.handleBumpLabelCommit(label);
+        }
+
         return this.handleBumpLabelCommit();
       case BRANCH_STATUSES.FIRST_TAG:
         return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));

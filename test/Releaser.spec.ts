@@ -32,7 +32,7 @@ describe('Releaser CLI', () => {
   };
 
   function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
-    return () => Promise.resolve(file || {});
+    return () => Promise.resolve(file || {pkg: '', path: '', length: 1});
   }
 
   function makeNewPkgUpFileObject(
@@ -176,18 +176,12 @@ describe('Releaser CLI', () => {
   });
 
   describe('case: no tag and package', () => {
-    let config;
     let pkgUp;
     let pkgMessage;
 
     beforeEach(() => {
-      config     = new ConfigMock();
       pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
       pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
-
-      // config.setPackageJsonValidity(true);
-      // config.setPackageJsonVersion('3.0.0');
-      // config.setPackageJsonExhaustStatus(false);
     });
 
     describe('package.json found prompt', () => {
@@ -196,7 +190,7 @@ describe('Releaser CLI', () => {
         // this should be ignored
         prompt.setResponse('confirm', {message: messages.noTag}, false);
 
-        releaser = makeNewReleaser({fPrompt: prompt, pkgUp, config});
+        releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
         releaser.init().then(() => {
           expect(gitExec.isTagPresent('v3.0.0')).to.be.true;
@@ -209,7 +203,7 @@ describe('Releaser CLI', () => {
         prompt.setResponse('list', {message: pkgMessage}, 'No');
         prompt.setResponse('confirm', {message: messages.noValidTag}, false);
 
-        releaser = makeNewReleaser({fPrompt: prompt, pkgUp, config});
+        releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
         releaser.init().catch(err => {
           expect(err.message).to.equal(UserAbortedError.getMessage());
@@ -223,7 +217,7 @@ describe('Releaser CLI', () => {
         // this should be ignored
         prompt.setResponse('confirm', {message: messages.noValidTag}, true);
 
-        releaser = makeNewReleaser({fPrompt: prompt, pkgUp, config});
+        releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
         releaser.init().catch(err => {
           expect(err.message).to.equal(UserAbortedError.getMessage());
@@ -233,36 +227,32 @@ describe('Releaser CLI', () => {
       });
     });
 
-    xit('should bump to package.json version', (done) => {
+    it('should bump to current package.json version', (done) => {
       prompt.setResponse('list', {message: pkgMessage}, 'Yes');
 
-      const anotherPkgUp  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '5.1.0'}));
-      const anotherPrompt = new PromptMock();
-      anotherPrompt.setResponse('list', {message: pkgMessage}, 'Yes');
-      anotherPrompt.setResponse(
+      const pkgUp2  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '5.1.0'}));
+      const prompt2 = new PromptMock();
+      prompt2.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt2.setResponse(
         'confirm',
         {message: 'Tag v5.1.0 is not present in repository, continue?'},
         true,
       );
 
-      const yetAnotherPkgUp  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '9.2.3'}));
-      const yetAnotherPrompt = new PromptMock();
-      yetAnotherPrompt.setResponse('list', {message: pkgMessage}, 'Yes');
-      yetAnotherPrompt.setResponse(
+      const pkgUp3  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '9.2.3'}));
+      const prompt3 = new PromptMock();
+      prompt3.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt3.setResponse(
         'confirm',
         {message: 'Tag v9.2.3 is not present in repository, continue?'},
         true,
       );
 
-      releaser                 = makeNewReleaser({fPrompt: prompt, pkgUp});
-      const anotherReleaser    = makeNewReleaser({
-        fPrompt: anotherPrompt,
-        pkgUp:   anotherPkgUp,
-      });
-      const yetAnotherReleaser = makeNewReleaser({
-        fPrompt: yetAnotherPrompt,
-        pkgUp:   yetAnotherPkgUp,
-      });
+      releaser        = makeNewReleaser({fPrompt: prompt, pkgUp});
+      const releaser2 = makeNewReleaser({fPrompt: prompt2, pkgUp: pkgUp2});
+      const releaser3 = makeNewReleaser({fPrompt: prompt3, pkgUp: pkgUp3});
+
+      expect(gitExec.isTagPresent('v3.0.0')).to.be.false;
 
       releaser.init()
         .then(() => {
@@ -272,20 +262,18 @@ describe('Releaser CLI', () => {
           expect(gitExec.isTagPresent('v3.1.0')).to.be.false;
           expect(gitExec.isTagPresent('v5.1.0')).to.be.false;
 
-          return anotherReleaser.init();
+          return releaser2.init();
         })
         .then(() => {
-          console.log(gitExec.getAllTagsWithRegex());
           expect(gitExec.isTagPresent('v3.1.0')).to.be.false;
           expect(gitExec.isTagPresent('v5.1.0')).to.be.true;
-        })
-        .then(() => {
-          shell.exec('touch something && git add --all && git commit -m "a commit"');
           expect(gitExec.isTagPresent('v9.2.3')).to.be.false;
+          shell.exec('touch file && git add --all && git commit -m "another commit"');
 
-          return yetAnotherReleaser.init();
+          return releaser3.init();
         })
         .then(() => expect(gitExec.isTagPresent('v9.2.3')).to.be.true)
+        .then(() => done())
         .catch(err => done(err));
     });
   });
