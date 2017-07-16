@@ -10,6 +10,7 @@ import {ISemVer} from './semver/ISemVer';
 import {readPkgUp} from './others/types';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
+import {FileExecutor} from './exec/FileExecutor';
 
 const enum BRANCH_STATUSES {
   FIRST_TAG   = 1,
@@ -61,6 +62,7 @@ export class Releaser {
    * @param {IPrompt} prompt A shell prompt implementation.
    * @param {ISemVer} semver The semver wrapper.
    * @param {readPkgUp} readPkgUp A shell prompt implementation.
+   * @param {FileExecutor} fileExec A filesystem wrapper.
    */
   constructor(
     private cli: ICliBootstrap,
@@ -72,6 +74,7 @@ export class Releaser {
     private semver: ISemVer,
     // tslint:disable-next-line no-shadowed-variable
     private readPkgUp: readPkgUp,
+    private fileExec: FileExecutor,
   ) {
     this.currentSearchPath = process.cwd();
   }
@@ -415,6 +418,10 @@ export class Releaser {
    * @param label
    */
   private handleBumpLabelCommit(label?: string): void {
+    if (this.cli.isInLogMode()) {
+      this.fileExec.backup(this.config.getPackageJson().path)
+        .then(() => this.fileExec.backupChangelog());
+    }
     label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
     this.createTag(label);
 

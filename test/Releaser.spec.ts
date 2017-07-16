@@ -18,6 +18,7 @@ import {Releaser} from '../src/Releaser';
 import {SemVer} from '../src/semver/SemVer';
 import {UserAbortedError} from '../src/exceptions/UserAbortedError';
 import {IPkgUpResultObject} from '../src/config/IPkgResultObject';
+import {FileExecutor} from '../src/exec/FileExecutor';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -51,21 +52,23 @@ describe('Releaser CLI', () => {
     fPrompt?: IPrompt,
     semver?: ISemVer,
     pkgUp?: TReadPkgUp,
+    fileExec?: FileExecutor,
   }) {
-    let {cli, logger, config, bump, exec, fPrompt, semver, pkgUp} = options;
+    let {cli, logger, config, bump, exec, fPrompt, semver, pkgUp, fileExec} = options;
 
-    cli     = cli || new CliBootstrapMock();
-    logger  = logger || new LoggerMock();
-    config  = config || new ConfigMock();
-    bump    = bump || new BumpFinderMock();
-    fPrompt = fPrompt || new PromptMock();
-    pkgUp   = pkgUp || makeNewPkgUpFunction();
+    cli      = cli || new CliBootstrapMock();
+    logger   = logger || new LoggerMock();
+    config   = config || new ConfigMock();
+    bump     = bump || new BumpFinderMock();
+    fPrompt  = fPrompt || new PromptMock();
+    pkgUp    = pkgUp || makeNewPkgUpFunction();
+    fileExec = fileExec || new FileExecutor();
 
     // non-mocks
     exec   = exec || gitExec;
     semver = semver || new SemVer();
 
-    return new Releaser(cli, logger, config, bump, exec, fPrompt, semver, pkgUp);
+    return new Releaser(cli, logger, config, bump, exec, fPrompt, semver, pkgUp, fileExec);
   }
 
   beforeEach(() => {

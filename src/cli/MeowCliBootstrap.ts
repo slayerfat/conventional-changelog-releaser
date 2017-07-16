@@ -32,6 +32,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -h,  --help         This help message.
       -i,  --identifier   The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
       -j,  --json         Attempts to find a valid package.json file inside the working dir.
+      -l,  --log          Create or alter existing Changelog.md file, defaults to true.
       -n,  --npm-publish  Tries to publish the new version to npm.
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
@@ -75,6 +76,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       h: 'help',
       i: 'identifier',
       j: 'json',
+      l: 'log',
       n: 'npm-publish',
       p: 'pre',
       P: 'prefix',
@@ -87,6 +89,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       'dry',
       'forced',
       'json',
+      'log',
       'npm-publish',
       'npm-publish',
       'pre',
@@ -99,6 +102,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       dry:    false,
       forced: false,
       json:   false,
+      log:    true,
       prefix: true,
       reset:  false,
     },
@@ -128,6 +132,10 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public isAuto(): boolean {
     return this.getFlag('auto');
+  }
+
+  public isInLogMode(): boolean {
+    return this.getFlag('log');
   }
 
   public isForced(): boolean {

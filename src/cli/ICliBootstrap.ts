@@ -84,4 +84,11 @@ export interface ICliBootstrap {
    * @return {boolean}
    */
   isReset(): boolean;
+
+  /**
+   * Gets the changelog flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isInLogMode(): boolean;
 }

@@ -13,6 +13,7 @@ import {MeowCliBootstrap} from './cli/MeowCliBootstrap';
 import {Releaser} from './Releaser';
 import {SemVer} from './semver/SemVer';
 import {UserAbortedError} from './exceptions/UserAbortedError';
+import {FileExecutor} from './exec/FileExecutor';
 
 const debug = new DebugLogger('main');
 debug.debug('starting');
@@ -29,6 +30,7 @@ const rel = new Releaser(
   new InquirerPrompt(),
   new SemVer(),
   readPkgUp,
+  new FileExecutor(),
 );
 
 rel.init()
