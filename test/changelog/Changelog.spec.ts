@@ -11,7 +11,7 @@ describe('Changelog', () => {
   let changelog: Changelog;
   const files = {
     destination: 'destination',
-    target     : 'target',
+    target:      'target',
   };
 
   shell.config.silent = false;
@@ -76,6 +76,37 @@ describe('Changelog', () => {
           const path = `${changelog.getBackupPrefix()}.${originalPath}`;
 
           expect(shell.test('-e', path)).to.be.true;
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+  });
+
+  describe('restore', () => {
+    it('should throw ChangelogNotFoundError original not found', (done) => {
+      shell.touch('changelog.md');
+
+      changelog.restore()
+        .then(() => done(new Error()))
+        .catch(err => {
+          expect(err.message).to.equal(Changelog.errors.backupNotFound);
+
+          done();
+        });
+    });
+
+    it('should restore the file and delete the backup afterwards', (done) => {
+      const path         = 'changelog.md';
+      const originalPath = 'original.changelog.md';
+
+      shell.touch(path);
+
+      changelog.backup()
+        .then(() => changelog.restore())
+        .then(() => {
+          expect(shell.test('-e', path)).to.be.true;
+          expect(shell.test('-e', originalPath)).to.be.false;
 
           done();
         })

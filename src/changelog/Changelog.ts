@@ -3,6 +3,10 @@ import {ChangelogNotFoundError} from '../exceptions/ChangelogNotFoundError';
 import {access} from 'fs';
 
 export class Changelog {
+  public static errors = {
+    backupNotFound: 'The changelog backup file was not found.',
+  };
+
   constructor(private fileExec: FileExecutor) {
     //
   }
@@ -26,6 +30,27 @@ export class Changelog {
     try {
       await FileExecutor.copy(path, `${this.fileExec.getBackupPrefix()}.${path}`);
     } catch (err) {
+      throw err;
+    }
+  }
+
+  /**
+   * Tries to copy a changelog from the cwd as a backup.
+   *
+   * @return {Promise<void>}
+   */
+  public async restore(): Promise<void> {
+    try {
+      const target = await this.getFilePath();
+      const source = `${this.fileExec.getBackupPrefix()}.${target}`;
+
+      await FileExecutor.copy(source, target);
+      await FileExecutor.remove(source);
+    } catch (err) {
+      if (/^ENOENT/.test(err.message)) {
+        throw new ChangelogNotFoundError(Changelog.errors.backupNotFound);
+      }
+
       throw err;
     }
   }
