@@ -1,5 +1,4 @@
-import {createReadStream, createWriteStream, unlinkSync, access} from 'fs';
-import {ChangelogNotFoundError} from '../exceptions/ChangelogNotFoundError';
+import {createReadStream, createWriteStream, unlinkSync} from 'fs';
 
 export class FileExecutor {
 
@@ -8,7 +7,7 @@ export class FileExecutor {
    *
    * @type {string}
    */
-  private prefix = 'original';
+  private backupPrefix = 'original';
 
   /**
    * Copies a file from the source to the destination path using node FS.
@@ -45,8 +44,8 @@ export class FileExecutor {
     }
   }
 
-  public getPrefix() {
-    return this.prefix;
+  public getBackupPrefix() {
+    return this.backupPrefix;
   }
 
   /**
@@ -57,70 +56,24 @@ export class FileExecutor {
    */
   public async backup(target: string): Promise<void> {
     try {
-      await FileExecutor.copy(target, `${this.prefix}.${target}`);
+      await FileExecutor.copy(target, `${this.backupPrefix}.${target}`);
     } catch (err) {
       throw err;
     }
   }
 
   /**
-   * Tries to copy a changelog from the cwd as a backup.
-   *
-   * @return {Promise<void>}
-   */
-  public async backupChangelog(): Promise<void> {
-    const path = await this.getChangelogPath();
-
-    try {
-      await FileExecutor.copy(path, `${this.prefix}.${path}`);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
-   * Restores a given target appending a prefix and deletes the backup.
+   * Restores a given target appending a backupPrefix and deletes the backup.
    *
    * @param {string} target The file path
    * @return {Promise<void>}
    */
   public async restore(target: string): Promise<void> {
     try {
-      await FileExecutor.copy(`${this.prefix}.${target}`, target);
-      await FileExecutor.remove(`${this.prefix}.${target}`);
+      await FileExecutor.copy(`${this.backupPrefix}.${target}`, target);
+      await FileExecutor.remove(`${this.backupPrefix}.${target}`);
     } catch (err) {
       throw err;
     }
-  }
-
-  /**
-   * Determines if any changelog preset exist on the cwd.
-   *
-   * @return {Promise<string>}
-   */
-  private async getChangelogPath(): Promise<string> {
-    const promises = ['changelog.md', 'Changelog.md', 'CHANGELOG.md'].map(path => {
-      return new Promise((resolve, reject) => {
-        access(path, err => {
-          if (!err) {
-            return resolve({path, exist: true});
-          } else if (err.code === 'ENOENT') {
-            return resolve({path, exist: false});
-          }
-
-          reject(err);
-        });
-      });
-    });
-
-    return Promise.all(promises).then((results: Array<{ path: string, exist: boolean }>) => {
-      const existingPaths = results.filter(result => result.exist === true);
-
-      if (existingPaths.length === 0) {
-        throw new ChangelogNotFoundError();
-      }
-
-      return existingPaths.map(result => result.path)[0];
-    });
   }
 }

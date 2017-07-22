@@ -14,6 +14,7 @@ import {Releaser} from './Releaser';
 import {SemVer} from './semver/SemVer';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 import {FileExecutor} from './exec/FileExecutor';
+import {Changelog} from './changelog/Changelog';
 
 const debug = new DebugLogger('main');
 debug.debug('starting');
@@ -30,7 +31,7 @@ const rel = new Releaser(
   new InquirerPrompt(),
   new SemVer(),
   readPkgUp,
-  new FileExecutor(),
+  new Changelog(new FileExecutor()),
 );
 
 rel.init()

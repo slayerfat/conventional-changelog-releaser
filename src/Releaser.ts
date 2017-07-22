@@ -10,7 +10,7 @@ import {ISemVer} from './semver/ISemVer';
 import {readPkgUp} from './others/types';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
-import {FileExecutor} from './exec/FileExecutor';
+import {Changelog} from './changelog/Changelog';
 
 const enum BRANCH_STATUSES {
   FIRST_TAG   = 1,
@@ -62,7 +62,7 @@ export class Releaser {
    * @param {IPrompt} prompt A shell prompt implementation.
    * @param {ISemVer} semver The semver wrapper.
    * @param {readPkgUp} readPkgUp A shell prompt implementation.
-   * @param {FileExecutor} fileExec A filesystem wrapper.
+   * @param {Changelog} changelog A changelog file wrapper.
    */
   constructor(
     private cli: ICliBootstrap,
@@ -74,7 +74,7 @@ export class Releaser {
     private semver: ISemVer,
     // tslint:disable-next-line no-shadowed-variable
     private readPkgUp: readPkgUp,
-    private fileExec: FileExecutor,
+    private changelog: Changelog,
   ) {
     this.currentSearchPath = process.cwd();
   }
@@ -417,11 +417,13 @@ export class Releaser {
    *
    * @param label
    */
-  private handleBumpLabelCommit(label?: string): void {
+  private async handleBumpLabelCommit(label?: string): Promise<void> {
     if (this.cli.isInLogMode()) {
-      this.fileExec.backup(this.config.getPackageJson().path)
-        .then(() => this.fileExec.backupChangelog());
+      this.changelog.getFileExec()
+        .backup(this.config.getPackageJson().path)
+        .then(() => this.changelog.backup());
     }
+
     label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
     this.createTag(label);
 

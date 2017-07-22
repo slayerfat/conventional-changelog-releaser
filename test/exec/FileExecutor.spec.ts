@@ -58,7 +58,7 @@ describe('FileExecutor', () => {
     it('should backup a given file according to prefix', (done) => {
       expect(shell.test('-e', files.target)).to.be.true;
       exec.backup(files.target).then(() => {
-        const path = `${exec.getPrefix()}.${files.target}`;
+        const path = `${exec.getBackupPrefix()}.${files.target}`;
 
         expect(shell.test('-e', path)).to.be.true;
 
@@ -79,57 +79,7 @@ describe('FileExecutor', () => {
         })
         .then(() => {
           expect(shell.test('-e', files.target)).to.be.true;
-          expect(shell.test('-e', `${exec.getPrefix()}.${files.target}`)).to.be.false;
-
-          done();
-        })
-        .catch(err => done(err));
-    });
-  });
-
-  describe('backupChangelog', () => {
-    it('should throw ChangelogNotFoundError if path not found', (done) => {
-      exec.backupChangelog()
-        .then(() => done(new Error()))
-        .catch(err => {
-          expect(err.message).to.equal(ChangelogNotFoundError.getMessage());
-
-          done();
-        });
-    });
-
-    it('should find and copy changelog.md case-insensitive', (done) => {
-      let originalPath = 'changelog.md';
-
-      shell.touch(originalPath);
-
-      exec.backupChangelog()
-        .then(() => {
-          const path = `${exec.getPrefix()}.${originalPath}`;
-
-          expect(shell.test('-e', path)).to.be.true;
-
-          shell.rm([originalPath, path]);
-          originalPath = 'Changelog.md';
-          shell.touch(originalPath);
-
-          return exec.backupChangelog();
-        })
-        .then(() => {
-          const path = `${exec.getPrefix()}.${originalPath}`;
-
-          expect(shell.test('-e', path)).to.be.true;
-
-          shell.rm([originalPath, path]);
-          originalPath = 'CHANGELOG.md';
-          shell.touch(originalPath);
-
-          return exec.backupChangelog();
-        })
-        .then(() => {
-          const path = `${exec.getPrefix()}.${originalPath}`;
-
-          expect(shell.test('-e', path)).to.be.true;
+          expect(shell.test('-e', `${exec.getBackupPrefix()}.${files.target}`)).to.be.false;
 
           done();
         })
