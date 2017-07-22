@@ -10,7 +10,7 @@ describe('FileExecutor', () => {
   let exec: FileExecutor;
   const files = {
     destination: 'destination',
-    target     : 'target',
+    target:      'target',
   };
 
   shell.config.silent = false;
@@ -80,6 +80,28 @@ describe('FileExecutor', () => {
         .then(() => {
           expect(shell.test('-e', files.target)).to.be.true;
           expect(shell.test('-e', `${exec.getBackupPrefix()}.${files.target}`)).to.be.false;
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+  });
+
+  describe('exist', () => {
+    it('should find a given path', (done) => {
+      const path = 'file';
+      shell.touch(path);
+
+      expect(shell.test('-e', path)).to.be.true;
+
+      FileExecutor.isPresent(path)
+        .then(result => {
+          expect(result).to.be.true;
+
+          return FileExecutor.isPresent('anotherFile');
+        })
+        .then(result => {
+          expect(result).to.be.false;
 
           done();
         })
