@@ -20,6 +20,7 @@ import {UserAbortedError} from '../src/exceptions/UserAbortedError';
 import {IPkgUpResultObject} from '../src/config/IPkgResultObject';
 import {FileExecutor} from '../src/exec/FileExecutor';
 import {Changelog} from '../src/changelog/Changelog';
+import {ChangelogNotFoundError} from '../src/exceptions/ChangelogNotFoundError';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
@@ -335,6 +336,48 @@ describe('Releaser CLI', () => {
           done();
         })
         .catch(err => done(err));
+    });
+  });
+
+  describe('changelog related operations', () => {
+    let cli;
+
+    before(() => {
+      cli = new CliBootstrapMock();
+      cli.setFlag('log', true);
+    });
+    it('should throw error and abort if no changelog is found', (done) => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init()
+        .then(() => done(new Error()))
+        .catch(err => {
+          expect(err.message).to.equal(ChangelogNotFoundError.getMessage());
+          expect(gitExec.isAnyTagPresent()).to.be.false;
+
+          done();
+        });
+    });
+
+    it('should update the changelog on bump', (done) => {
+      shell.touch('file');
+      shell.touch('changelog.md');
+      shell.exec('git add --all && git commit -m "feat(test): file added"');
+
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init().then(() => {
+        const command = shell.cat('changelog.md') as any;
+        expect(command.stdout).to.match(/file added/);
+
+        done();
+      }).catch(err => done(err));
     });
   });
 });
