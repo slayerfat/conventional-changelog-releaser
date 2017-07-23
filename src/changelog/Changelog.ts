@@ -1,16 +1,55 @@
 import {FileExecutor} from '../exec/FileExecutor';
 import {ChangelogNotFoundError} from '../exceptions/ChangelogNotFoundError';
-import {access} from 'fs';
+import {access, createWriteStream} from 'fs';
+import * as conLog from 'conventional-changelog';
 
 export class Changelog {
+  public static errors = {
+    backupNotFound: 'The changelog backup file was not found.',
+  };
+
+  private conLog = conLog;
+
   constructor(private fileExec: FileExecutor) {
     //
   }
 
+  /**
+   * Updates the changelog according to the preset, defaults to angular.
+   *
+   * @param {string} preset Possible values: 'angular', 'atom', 'codemirror', 'ember',
+   * 'eslint', 'express', 'jquery', 'jscs', 'jshint'
+   */
+  public async update(preset = 'angular'): Promise<void> {
+    return this.getFilePath().then(path => {
+      return new Promise<void>((resolve, reject) => {
+        const changelogStream = createWriteStream(path);
+        const onErrorCB       = (err) => reject(err);
+
+        changelogStream.on('error', onErrorCB);
+
+        this.conLog({preset})
+          .on('error', err => onErrorCB)
+          .on('end', () => resolve())
+          .pipe(changelogStream);
+      });
+    });
+  }
+
+  /**
+   * Returns the underlying FileExecutor.
+   *
+   * @return {FileExecutor}
+   */
   public getFileExec(): FileExecutor {
     return this.fileExec;
   }
 
+  /**
+   * Gives the string prefix used to prepend file path.
+   *
+   * @return {string}
+   */
   public getBackupPrefix() {
     return this.fileExec.getBackupPrefix();
   }
@@ -21,11 +60,32 @@ export class Changelog {
    * @return {Promise<void>}
    */
   public async backup(): Promise<void> {
-    const path = await this.getFilePath();
-
     try {
+      const path = await this.getFilePath();
+
       await FileExecutor.copy(path, `${this.fileExec.getBackupPrefix()}.${path}`);
     } catch (err) {
+      throw err;
+    }
+  }
+
+  /**
+   * Tries to copy a changelog from the cwd as a backup.
+   *
+   * @return {Promise<void>}
+   */
+  public async restore(): Promise<void> {
+    try {
+      const target = await this.getFilePath();
+      const source = `${this.fileExec.getBackupPrefix()}.${target}`;
+
+      await FileExecutor.copy(source, target);
+      await FileExecutor.remove(source);
+    } catch (err) {
+      if (/^ENOENT/.test(err.message)) {
+        throw new ChangelogNotFoundError(Changelog.errors.backupNotFound);
+      }
+
       throw err;
     }
   }

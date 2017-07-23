@@ -418,29 +418,32 @@ export class Releaser {
    * @param label
    */
   private async handleBumpLabelCommit(label?: string): Promise<void> {
-    if (this.cli.isInLogMode()) {
-      this.changelog.getFileExec()
-        .backup(this.config.getPackageJson().path)
-        .then(() => this.changelog.backup());
-    }
+    return Promise.resolve()
+      .then(() => {
+        if (this.cli.isInLogMode()) {
+          return this.changelog.backup()
+            .then(() => this.changelog.update());
+        }
+      })
+      .then(() => {
+        label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
+        this.createTag(label);
 
-    label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
-    this.createTag(label);
+        if (this.config.isPackageJsonValid()) {
+          this.config.setPackageJsonVersion(label);
+        }
 
-    if (this.config.isPackageJsonValid()) {
-      this.config.setPackageJsonVersion(label);
-    }
+        this.config.setCurrentSemVer(label);
 
-    this.config.setCurrentSemVer(label);
+        // TODO implement shouldCommit
+        if (this.cli.shouldCommit() === true) {
+          this.logger.info(`Bump to ${label} completed.`);
 
-    // TODO implement shouldCommit
-    if (this.cli.shouldCommit() === true) {
-      this.logger.info(`Bump to ${label} completed.`);
+          return;
+        }
 
-      return;
-    }
-
-    this.logger.info(`Bump to ${label} completed, no commits made.`);
+        this.logger.info(`Bump to ${label} completed, no commits made.`);
+      });
   }
 
   /**

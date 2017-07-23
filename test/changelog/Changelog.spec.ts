@@ -3,25 +3,20 @@ import {expect} from 'chai';
 import {FileExecutor} from '../../src/exec/FileExecutor';
 import {ChangelogNotFoundError} from '../../src/exceptions/ChangelogNotFoundError';
 import {Changelog} from '../../src/changelog/Changelog';
+import {makeFreshGitDir} from '../helpers/makeFreshGitDir';
 
 // chai.expect shows as an unused expression
 /* tslint:disable:no-unused-expression */
 
 describe('Changelog', () => {
   let changelog: Changelog;
-  const files = {
-    destination: 'destination',
-    target     : 'target',
-  };
 
   shell.config.silent = false;
 
   beforeEach(() => {
     changelog = new Changelog(new FileExecutor());
 
-    shell.mkdir('.tmp');
-    shell.cd('.tmp');
-    shell.touch(files.target);
+    makeFreshGitDir({silent: false});
   });
 
   afterEach(() => {
@@ -80,6 +75,65 @@ describe('Changelog', () => {
           done();
         })
         .catch(err => done(err));
+    });
+  });
+
+  describe('restore', () => {
+    it('should throw ChangelogNotFoundError original not found', (done) => {
+      shell.touch('changelog.md');
+
+      changelog.restore()
+        .then(() => done(new Error()))
+        .catch(err => {
+          expect(err.message).to.equal(Changelog.errors.backupNotFound);
+
+          done();
+        });
+    });
+
+    it('should restore the file and delete the backup afterwards', (done) => {
+      const path         = 'changelog.md';
+      const originalPath = 'original.changelog.md';
+
+      shell.touch(path);
+
+      changelog.backup()
+        .then(() => changelog.restore())
+        .then(() => {
+          expect(shell.test('-e', path)).to.be.true;
+          expect(shell.test('-e', originalPath)).to.be.false;
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+  });
+
+  describe('update()', () => {
+    it('should add new valid information to an existing changelog', (done) => {
+      shell.touch('changelog.md');
+      shell.exec('git add --all && git commit -m "feat(test): changelog added"');
+
+      changelog.update().then(() => {
+        const command = shell.cat('changelog.md') as any;
+        expect(command.stdout).to.match(/changelog added/);
+        expect(command.stdout).to.not.match(/Bug Fixes/);
+
+        done();
+      }).catch(err => done(err));
+    });
+
+    it('should allow different presets', (done) => {
+      shell.touch('changelog.md');
+      shell.exec('git add --all && git commit -m ":memo: Add changelog"');
+
+      changelog.update('atom').then(() => {
+        const command = shell.cat('changelog.md') as any;
+        expect(command.stdout).to.match(/Add changelog/);
+        expect(command.stdout).to.not.match(/Features/);
+
+        done();
+      }).catch(err => done(err));
     });
   });
 });

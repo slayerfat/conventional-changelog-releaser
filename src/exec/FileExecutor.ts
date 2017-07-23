@@ -1,4 +1,4 @@
-import {createReadStream, createWriteStream, unlinkSync} from 'fs';
+import {createReadStream, createWriteStream, unlinkSync, access} from 'fs';
 
 export class FileExecutor {
 
@@ -44,6 +44,31 @@ export class FileExecutor {
     }
   }
 
+  /**
+   * Checks if a path exists in the filesystem.
+   *
+   * @param {string} path
+   * @return {Promise<boolean>}
+   */
+  public static async isPresent(path: string): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      access(path, err => {
+        if (!err) {
+          return resolve(true);
+        } else if (err.code === 'ENOENT') {
+          return resolve(false);
+        }
+
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Gives the string prefix used to prepend the path to manipulate.
+   *
+   * @return {string}
+   */
   public getBackupPrefix() {
     return this.backupPrefix;
   }
