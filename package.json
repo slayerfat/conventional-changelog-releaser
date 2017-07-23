@@ -78,6 +78,7 @@
   },
   "dependencies": {
     "configstore": "^3.0.0",
+    "conventional-changelog": "^1.1.4",
     "conventional-recommended-bump": "^1.0.0",
     "debug": "^2.6.6",
     "inquirer": "^3.0.6",
