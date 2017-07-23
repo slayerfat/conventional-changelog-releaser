@@ -75,6 +75,7 @@ describe('Releaser CLI', () => {
 
   beforeEach(() => {
     makeFreshGitDir();
+    shell.touch('changelog.md');
 
     releaser = makeNewReleaser({});
     prompt   = new PromptMock();
@@ -346,7 +347,9 @@ describe('Releaser CLI', () => {
       cli = new CliBootstrapMock();
       cli.setFlag('log', true);
     });
+
     it('should throw error and abort if no changelog is found', (done) => {
+      shell.rm('changelog.md');
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
 
@@ -364,7 +367,6 @@ describe('Releaser CLI', () => {
 
     it('should update the changelog on bump', (done) => {
       shell.touch('file');
-      shell.touch('changelog.md');
       shell.exec('git add --all && git commit -m "feat(test): file added"');
 
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
@@ -375,6 +377,36 @@ describe('Releaser CLI', () => {
       releaser.init().then(() => {
         const command = shell.cat('changelog.md') as any;
         expect(command.stdout).to.match(/file added/);
+
+        done();
+      }).catch(err => done(err));
+    });
+  });
+
+  describe('commit related operations', () => {
+    let cli;
+
+    before(() => {
+      cli = new CliBootstrapMock();
+      cli.setFlag('log', true);
+      cli.setFlag('commit', true);
+    });
+
+    xit('should commit on bump as default', done => {
+      shell.touch('file');
+      shell.exec('git add --all && git commit -m "feat(test): file added"');
+
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init().then(() => {
+        const status = shell.exec('git status') as any;
+        const log    = shell.exec('git log') as any;
+
+        console.log(status.stdout);
+        console.log(log.stdout);
 
         done();
       }).catch(err => done(err));

@@ -427,6 +427,11 @@ export class Releaser {
       })
       .then(() => {
         label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
+
+        if (this.cli.shouldCommit() === false) {
+          return this.logger.info(`Bump to ${label} completed, no commits made.`);
+        }
+
         this.createTag(label);
 
         if (this.config.isPackageJsonValid()) {
@@ -435,14 +440,16 @@ export class Releaser {
 
         this.config.setCurrentSemVer(label);
 
-        // TODO implement shouldCommit
-        if (this.cli.shouldCommit() === true) {
-          this.logger.info(`Bump to ${label} completed.`);
+        if (this.cli.isInLogMode()) {
+          return this.changelog.getFilePath().then(path => {
+            const options = {message: `docs(changelog): bump to ${label}`, files: {paths: [path]}};
 
-          return;
+            const results = this.gitExec.commit(options);
+
+            this.logger.debug(results);
+            this.logger.info(`Bump to ${label} completed.`);
+          });
         }
-
-        this.logger.info(`Bump to ${label} completed, no commits made.`);
       });
   }
 

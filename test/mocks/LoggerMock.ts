@@ -1,9 +1,10 @@
 import {ILogger} from '../../src/debug/ILogger';
 
 export class LoggerMock implements ILogger {
+  private shouldLog = false;
 
-  constructor(private shouldLog = false) {
-    //
+  public setShouldLog(value: boolean) {
+    this.shouldLog = value;
   }
 
   public info(message: string): void {
