@@ -125,4 +125,35 @@ describe('GitExecutorSync', () => {
       expect(exec.getCurrentBranchName()).to.equal('master');
     });
   });
+
+  describe('commit', () => {
+    it('should throw error on incomplete params', () => {
+      const options = {message: 'test commit', files: {flags: [''], paths: ['']}};
+
+      expect(() => exec.commit(options))
+        .to.throw(Error, /Either flags or paths are expected to commit, but none found\./);
+    });
+
+    it('should add files and commit', () => {
+      shell.touch('file');
+      const options = {message: 'test commit message', files: {flags: ['--all'], paths: ['']}};
+
+      expect(exec.commit(options)).to.match(/test commit message/);
+
+      shell.touch('anotherFile');
+      options.message     = 'another commit';
+      options.files.flags = [''];
+      options.files.paths = ['anotherFile'];
+
+      expect(exec.commit(options)).to.match(/another commit/);
+    });
+
+    it('should create a new commit', () => {
+      shell.touch('file');
+      exec.perform('git add file');
+      const options = {message: 'test commit message'};
+
+      expect(exec.commit(options)).to.match(/test commit message/);
+    });
+  });
 });

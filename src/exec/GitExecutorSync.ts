@@ -72,6 +72,34 @@ export class GitExecutorSync extends ChildProcessExecutorSync {
   }
 
   /**
+   * Commits the current repo with the given message and optional flags.
+   *
+   * @param {{}} options
+   * @param {string} options.message
+   * @param {{}} options.files
+   * @param {string[]=} options.files.flags
+   * @param {string[]=} options.files.paths
+   * @return {string}
+   */
+  public commit(options: {message: string, files?: {flags?: string[], paths?: string[]}}): string {
+    if (options.files) {
+      const {flags, paths} = options.files;
+      const flagsAsString  = flags ? flags.join(' ') : '';
+      const pathsAsString  = paths ? paths.join(' ') : '';
+
+      if (flagsAsString === '' && pathsAsString === '') {
+        throw new Error('Either flags or paths are expected to commit, but none found.');
+      }
+
+      this.perform(`git add ${flagsAsString} ${pathsAsString}`);
+    }
+
+    const command = `git commit -m "${options.message}"`;
+
+    return this.perform(command);
+  }
+
+  /**
    * Gets the number of commits from the hash given to HEAD.
    *
    * @param {string} hash The commit hash to find from HEAD.
