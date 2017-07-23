@@ -95,7 +95,7 @@ export class Changelog {
    *
    * @return {Promise<string>}
    */
-  private async getFilePath(): Promise<string> {
+  public async getFilePath(): Promise<string> {
     const promises = ['changelog.md', 'Changelog.md', 'CHANGELOG.md'].map(path => {
       return new Promise((resolve, reject) => {
         access(path, err => {
