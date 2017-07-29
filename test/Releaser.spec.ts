@@ -386,27 +386,44 @@ describe('Releaser CLI', () => {
   describe('commit related operations', () => {
     let cli;
 
-    before(() => {
+    beforeEach(() => {
       cli = new CliBootstrapMock();
       cli.setFlag('log', true);
       cli.setFlag('commit', true);
-    });
 
-    it('should commit on bump as default', done => {
       shell.touch('file');
       shell.exec('git add --all && git commit -m "feat(test): file added"');
 
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
+    });
+
+    it('should commit on bump as default', done => {
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init().then(() => {
+        const status = shell.exec('git status') as any;
+
+        expect(shell.cat('changelog.md').toString().length).to.be.greaterThan(0);
+        expect(status.toString()).to.match(/nothing to commit, working directory clean/);
+        expect(gitExec.isAnyTagPresent()).to.be.true;
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+        expect(shell.test('-e', 'original.changelog.md')).to.be.false;
+
+        done();
+      }).catch(err => done(err));
+    });
+
+    it('should alter but not commit', done => {
+      cli.setFlag('commit', false);
 
       releaser = makeNewReleaser({fPrompt: prompt, cli});
 
       releaser.init().then(() => {
         const status = shell.exec('git status') as any;
 
-        expect(status.toString()).to.match(/nothing to commit, working directory clean/);
-        expect(gitExec.isAnyTagPresent()).to.be.true;
-        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+        expect(shell.cat('changelog.md').toString().length).to.be.greaterThan(0);
+        expect(gitExec.isAnyTagPresent()).to.be.false;
         expect(shell.test('-e', 'original.changelog.md')).to.be.false;
 
         done();

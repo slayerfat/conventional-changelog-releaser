@@ -420,39 +420,48 @@ export class Releaser {
    * @param label
    */
   private async handleBumpLabelCommit(label?: string): Promise<void> {
-    return Promise.resolve()
+    label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
+
+    return Promise.resolve() // updates changelog
       .then(() => {
         if (this.cli.isInLogMode()) {
           return this.changelog.backup()
-            .then(() => this.changelog.update());
+            .then(() => this.changelog.update())
+            .then(() => {
+              if (this.cli.shouldCommit() === false) {
+                return this.logger.info(`Bump to ${label} completed, no commits made.`);
+              }
+
+              // commits the changes
+              return this.changelog.getFilePath().then(path => {
+                const options = {
+                  files:   {paths: [path]},
+                  message: `docs(changelog): bump to ${label}`,
+                };
+
+                const results = this.gitExec.commit(options);
+
+                this.logger.debug('changelog commit results:', results);
+                this.logger.debug(results);
+                this.logger.info(`Changelog committed with message: '${options.message}'.`);
+              });
+            })
+            .then(() => this.changelog.deleteFile({backup: true}));
         }
       })
+      // creates the new label
       .then(() => {
-        label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
-
-        if (this.cli.shouldCommit() === false) {
-          return this.logger.info(`Bump to ${label} completed, no commits made.`);
-        }
-
-        if (this.cli.isInLogMode()) {
-          return this.changelog.getFilePath().then(path => {
-            const options = {message: `docs(changelog): bump to ${label}`, files: {paths: [path]}};
-
-            const results = this.gitExec.commit(options);
-
-            this.logger.debug('changelog commit results:', results);
-            this.logger.debug(results);
-            this.logger.info(`Changelog committed with message: '${options.message}'.`);
-          }).then(() => this.changelog.deleteFile({backup: true}));
-        }
-      }).then(() => {
-        this.createTag(label);
-
         if (this.config.isPackageJsonValid()) {
           this.config.setPackageJsonVersion(label);
         }
 
         this.config.setCurrentSemVer(label);
+
+        if (this.cli.shouldCommit() === false) {
+          return this.logger.info(`Bump to ${label} completed, not committing.`);
+        }
+
+        this.createTag(label);
 
         this.logger.info(`Bump to ${label} completed.`);
       });
