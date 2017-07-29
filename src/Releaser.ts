@@ -190,6 +190,8 @@ export class Releaser {
     } catch (err) {
       if (err.message === Releaser.errors.exhaustedDir ||
         err.message === Releaser.errors.noPackage) {
+        this.logger.debug('No file found, skipping.');
+
         return this.logger.debug(err);
       }
 
@@ -432,6 +434,18 @@ export class Releaser {
           return this.logger.info(`Bump to ${label} completed, no commits made.`);
         }
 
+        if (this.cli.isInLogMode()) {
+          return this.changelog.getFilePath().then(path => {
+            const options = {message: `docs(changelog): bump to ${label}`, files: {paths: [path]}};
+
+            const results = this.gitExec.commit(options);
+
+            this.logger.debug('changelog commit results:', results);
+            this.logger.debug(results);
+            this.logger.info(`Changelog committed with message: '${options.message}'.`);
+          }).then(() => this.changelog.deleteFile({backup: true}));
+        }
+      }).then(() => {
         this.createTag(label);
 
         if (this.config.isPackageJsonValid()) {
@@ -440,16 +454,7 @@ export class Releaser {
 
         this.config.setCurrentSemVer(label);
 
-        if (this.cli.isInLogMode()) {
-          return this.changelog.getFilePath().then(path => {
-            const options = {message: `docs(changelog): bump to ${label}`, files: {paths: [path]}};
-
-            const results = this.gitExec.commit(options);
-
-            this.logger.debug(results);
-            this.logger.info(`Bump to ${label} completed.`);
-          });
-        }
+        this.logger.info(`Bump to ${label} completed.`);
       });
   }
 
@@ -461,6 +466,9 @@ export class Releaser {
   private createTag(label: string): void {
     if (this.semver.valid(label)) {
       const label2 = this.updateLabelPrefix(label);
+
+      this.logger.info(`Creating new tag as '${label2}'.`);
+
       return this.gitExec.createTag(label2);
     }
 

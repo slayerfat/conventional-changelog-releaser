@@ -392,7 +392,7 @@ describe('Releaser CLI', () => {
       cli.setFlag('commit', true);
     });
 
-    xit('should commit on bump as default', done => {
+    it('should commit on bump as default', done => {
       shell.touch('file');
       shell.exec('git add --all && git commit -m "feat(test): file added"');
 
@@ -403,10 +403,11 @@ describe('Releaser CLI', () => {
 
       releaser.init().then(() => {
         const status = shell.exec('git status') as any;
-        const log    = shell.exec('git log') as any;
 
-        console.log(status.stdout);
-        console.log(log.stdout);
+        expect(status.toString()).to.match(/nothing to commit, working directory clean/);
+        expect(gitExec.isAnyTagPresent()).to.be.true;
+        expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
+        expect(shell.test('-e', 'original.changelog.md')).to.be.false;
 
         done();
       }).catch(err => done(err));

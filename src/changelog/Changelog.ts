@@ -10,6 +10,19 @@ export class Changelog {
 
   private conLog = conLog;
 
+  /**
+   * Basic error handling on file path.
+   *
+   * @param {Error} err The error object
+   */
+  private static handleChangelogPathError(err: Error) {
+    if (/^ENOENT/.test(err.message)) {
+      throw new ChangelogNotFoundError(Changelog.errors.backupNotFound);
+    }
+
+    throw err;
+  }
+
   constructor(private fileExec: FileExecutor) {
     //
   }
@@ -82,11 +95,7 @@ export class Changelog {
       await FileExecutor.copy(source, target);
       await FileExecutor.remove(source);
     } catch (err) {
-      if (/^ENOENT/.test(err.message)) {
-        throw new ChangelogNotFoundError(Changelog.errors.backupNotFound);
-      }
-
-      throw err;
+      Changelog.handleChangelogPathError(err);
     }
   }
 
@@ -110,7 +119,7 @@ export class Changelog {
       });
     });
 
-    return Promise.all(promises).then((results: Array<{ path: string, exist: boolean }>) => {
+    return Promise.all(promises).then((results: Array<{path: string, exist: boolean}>) => {
       const existingPaths = results.filter(result => result.exist === true);
 
       if (existingPaths.length === 0) {
@@ -119,5 +128,33 @@ export class Changelog {
 
       return existingPaths.map(result => result.path)[0];
     });
+  }
+
+  /**
+   * Deletes the changelog file from the media, original (backup) and current.
+   *
+   * @param {object} options
+   * @param {boolean=} options.current
+   * @param {boolean=} options.backup The backup or original file.
+   * @return {Promise<void>}
+   */
+  public async deleteFile(options: {current?: boolean, backup?: boolean}): Promise<void> {
+    const paths             = [];
+    const target            = await this.getFilePath();
+    const {current, backup} = options;
+
+    try {
+      if (current) {
+        paths.push(target);
+      }
+
+      if (backup) {
+        paths.push(`${this.fileExec.getBackupPrefix()}.${target}`);
+      }
+
+      paths.forEach(path => FileExecutor.remove(path));
+    } catch (err) {
+      Changelog.handleChangelogPathError(err);
+    }
   }
 }
