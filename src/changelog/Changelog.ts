@@ -76,7 +76,7 @@ export class Changelog {
     try {
       const path = await this.getFilePath();
 
-      await FileExecutor.copy(path, `${this.fileExec.getBackupPrefix()}.${path}`);
+      await this.fileExec.copy(path, `${this.fileExec.getBackupPrefix()}.${path}`);
     } catch (err) {
       throw err;
     }
@@ -92,8 +92,8 @@ export class Changelog {
       const target = await this.getFilePath();
       const source = `${this.fileExec.getBackupPrefix()}.${target}`;
 
-      await FileExecutor.copy(source, target);
-      await FileExecutor.remove(source);
+      await this.fileExec.copy(source, target);
+      await this.fileExec.remove(source);
     } catch (err) {
       Changelog.handleChangelogPathError(err);
     }
@@ -152,7 +152,7 @@ export class Changelog {
         paths.push(`${this.fileExec.getBackupPrefix()}.${target}`);
       }
 
-      paths.forEach(path => FileExecutor.remove(path));
+      paths.forEach(path => this.fileExec.remove(path));
     } catch (err) {
       Changelog.handleChangelogPathError(err);
     }

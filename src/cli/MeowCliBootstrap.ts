@@ -38,6 +38,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
       -r,  --release      The release type: major, minor, patch, etc. Ignored on auto-check.
       -R,  --reset        Resets the internal configuration (stored package.json, git config, etc).
+      -v,  --pkg-version  Updates the package version number, defaults to true.
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
@@ -82,6 +83,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       P: 'prefix',
       r: 'release',
       R: 'reset',
+      v: 'pkg-version',
     },
     boolean: [
       'auto',
@@ -91,20 +93,21 @@ export class MeowCliBootstrap implements ICliBootstrap {
       'json',
       'log',
       'npm-publish',
-      'npm-publish',
+      'pkg-version',
       'pre',
       'prefix',
       'reset',
     ],
     default: {
-      auto:   true,
-      commit: true,
-      dry:    false,
-      forced: false,
-      json:   false,
-      log:    true,
-      prefix: true,
-      reset:  false,
+      auto:          true,
+      commit:        true,
+      dry:           false,
+      forced:        false,
+      json:          false,
+      log:           true,
+      'pkg-version': true,
+      prefix:        true,
+      reset:         false,
     },
     string:  ['identifier', 'release'],
   };
@@ -156,6 +159,10 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public hasPrefix(): boolean {
     return this.getFlag('prefix');
+  }
+
+  public shouldUpdatePackageVersion(): boolean {
+    return this.getFlag('pkg-version');
   }
 
   public shouldCommit(): boolean {

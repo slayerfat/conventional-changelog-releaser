@@ -79,6 +79,13 @@ export interface ICliBootstrap {
   shouldCommit(): boolean;
 
   /**
+   * Gets the npm-version flag from the cli.
+   *
+   * @return {boolean}
+   */
+  shouldUpdatePackageVersion(): boolean;
+
+  /**
    * Gets the reset flag from the cli.
    *
    * @return {boolean}

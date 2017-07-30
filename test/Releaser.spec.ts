@@ -291,6 +291,7 @@ describe('Releaser CLI', () => {
     beforeEach(() => {
       pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
       pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
+      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
 
       prompt.setResponse(
         'confirm',
@@ -300,7 +301,6 @@ describe('Releaser CLI', () => {
     });
 
     it('should abort if no new commits present since last valid semver tag', (done) => {
-      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
       gitExec.createTag('1.0.0');
       gitExec.createTag('v1.0.0');
       gitExec.createTag('something');
@@ -318,7 +318,6 @@ describe('Releaser CLI', () => {
     });
 
     it('should bump to current package.json version', (done) => {
-      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
       gitExec.createTag('1.0.0');
       gitExec.createTag('v1.0.0');
       gitExec.createTag('something');
@@ -337,6 +336,35 @@ describe('Releaser CLI', () => {
           done();
         })
         .catch(err => done(err));
+    });
+
+    describe('package.json operations', () => {
+      it('should update the version as default', done => {
+        prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+        prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+        const cli = new CliBootstrapMock();
+        cli.setFlag('pkg-version', true);
+
+        releaser       = makeNewReleaser({fPrompt: prompt, cli, pkgUp});
+        const fileExec = new FileExecutor();
+
+        shell.touch('package.json');
+
+        const pkgData = JSON.stringify({version: '0.0.0'});
+
+        fileExec.write('package.json', pkgData)
+          .then(() => releaser.init())
+          .then(() => fileExec.read('package.json'))
+          .then(data => JSON.parse(data))
+          .then((file) => {
+            expect(gitExec.isAnyTagPresent()).to.be.true;
+            expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+            expect(file).to.not.be.undefined;
+            expect(file.version).to.equal('15.0.0');
+            done();
+          }).catch(err => done(err));
+      });
     });
   });
 

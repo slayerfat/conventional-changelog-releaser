@@ -1,4 +1,4 @@
-import {createReadStream, createWriteStream, unlinkSync, access} from 'fs';
+import {createReadStream, createWriteStream, unlinkSync, access, writeFile, readFile} from 'fs';
 
 export class FileExecutor {
 
@@ -16,7 +16,7 @@ export class FileExecutor {
    * @param {string} destination The destination path
    * @return {Promise<void>}
    */
-  public static async copy(source: string, destination: string): Promise<void> {
+  public copy(source: string, destination: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const readStream  = createReadStream(source);
       const writeStream = createWriteStream(destination);
@@ -31,11 +31,54 @@ export class FileExecutor {
   }
 
   /**
+   * Reads the file contents using node.
+   *
+   * @param file
+   * @param {string} encoding
+   * @return {Promise<any>}
+   */
+  public read(file, encoding = 'utf8'): Promise<any> {
+    return new Promise((resolve, reject) => {
+      readFile(file, encoding, (err, data) => {
+        if (err) {
+          reject(err);
+        }
+
+        resolve(data);
+      });
+    });
+  }
+
+  /**
+   * Writes data to a file using node fs.writeFile method.
+   *
+   * @param file
+   * @param data
+   * @param options
+   * @return {Promise<any>}
+   */
+  public write(file, data, options?: {
+    encoding?: string;
+    mode?: number;
+    flag?: string;
+  }) {
+    return new Promise((resolve, reject) => {
+      writeFile(file, data, options, (err) => {
+        if (err) {
+          reject(err);
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  /**
    * Removes a given file from the current dir.
    *
    * @param {string} target The target file path
    */
-  public static remove(target: string): void {
+  public remove(target: string): void {
     try {
       unlinkSync(target);
     } catch (err) {
@@ -50,7 +93,7 @@ export class FileExecutor {
    * @param {string} path
    * @return {Promise<boolean>}
    */
-  public static async isPresent(path: string): Promise<boolean> {
+  public isPresent(path: string): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
       access(path, err => {
         if (!err) {
@@ -79,12 +122,8 @@ export class FileExecutor {
    * @param {string} target The target path
    * @return {Promise<void>}
    */
-  public async backup(target: string): Promise<void> {
-    try {
-      await FileExecutor.copy(target, `${this.backupPrefix}.${target}`);
-    } catch (err) {
-      throw err;
-    }
+  public backup(target: string): Promise<void> {
+    return this.copy(target, `${this.backupPrefix}.${target}`);
   }
 
   /**
@@ -95,8 +134,8 @@ export class FileExecutor {
    */
   public async restore(target: string): Promise<void> {
     try {
-      await FileExecutor.copy(`${this.backupPrefix}.${target}`, target);
-      await FileExecutor.remove(`${this.backupPrefix}.${target}`);
+      await this.copy(`${this.backupPrefix}.${target}`, target);
+      await this.remove(`${this.backupPrefix}.${target}`);
     } catch (err) {
       throw err;
     }

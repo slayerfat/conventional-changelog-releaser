@@ -22,6 +22,11 @@ const enum BRANCH_STATUSES {
 
 export class Releaser {
 
+  /**
+   * The error strings this class can throw.
+   *
+   * @type {object}
+   */
   public static errors = {
     exhaustedDir: 'Exhausted all directories within repository.',
     invalidTag:   'No valid semver tag found in repository.',
@@ -422,49 +427,10 @@ export class Releaser {
   private async handleBumpLabelCommit(label?: string): Promise<void> {
     label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
 
-    return Promise.resolve() // updates changelog
-      .then(() => {
-        if (this.cli.isInLogMode()) {
-          return this.changelog.backup()
-            .then(() => this.changelog.update())
-            .then(() => {
-              if (this.cli.shouldCommit() === false) {
-                return this.logger.info(`Bump to ${label} completed, no commits made.`);
-              }
-
-              // commits the changes
-              return this.changelog.getFilePath().then(path => {
-                const options = {
-                  files:   {paths: [path]},
-                  message: `docs(changelog): bump to ${label}`,
-                };
-
-                const results = this.gitExec.commit(options);
-
-                this.logger.debug('changelog commit results:', results);
-                this.logger.debug(results);
-                this.logger.info(`Changelog committed with message: '${options.message}'.`);
-              });
-            })
-            .then(() => this.changelog.deleteFile({backup: true}));
-        }
-      })
-      // creates the new label
-      .then(() => {
-        if (this.config.isPackageJsonValid()) {
-          this.config.setPackageJsonVersion(label);
-        }
-
-        this.config.setCurrentSemVer(label);
-
-        if (this.cli.shouldCommit() === false) {
-          return this.logger.info(`Bump to ${label} completed, not committing.`);
-        }
-
-        this.createTag(label);
-
-        this.logger.info(`Bump to ${label} completed.`);
-      });
+    return Promise.resolve()
+      .then(() => this.updateChangelog(label))
+      .then(() => this.createTag(label))
+      .then(() => this.updatePkgJsonVersion(label));
   }
 
   /**
@@ -473,15 +439,25 @@ export class Releaser {
    * @param {string} label The label to tag
    */
   private createTag(label: string): void {
-    if (this.semver.valid(label)) {
-      const label2 = this.updateLabelPrefix(label);
-
-      this.logger.info(`Creating new tag as '${label2}'.`);
-
-      return this.gitExec.createTag(label2);
+    if (this.config.isPackageJsonValid()) {
+      this.config.setPackageJsonVersion(label);
     }
 
-    throw new Error(`Invalid label ${label}, will not continue.`);
+    this.config.setCurrentSemVer(label);
+
+    if (this.cli.shouldCommit() === false) {
+      return this.logger.info(`Bump to ${label} completed, not committing.`);
+    }
+
+    if (!this.semver.valid(label)) {
+      throw new Error(`Invalid label ${label}, will not continue.`);
+    }
+
+    const updatedLabel = this.updateLabelPrefix(label);
+
+    this.logger.info(`Creating new tag as '${updatedLabel}'.`);
+
+    return this.gitExec.createTag(updatedLabel);
   }
 
   /**
@@ -513,5 +489,66 @@ export class Releaser {
     }
 
     return label.replace(/^v/, '');
+  }
+
+  /**
+   * Updates the local changelog file.
+   *
+   * @param {string} label
+   * @return {Promise<void>}
+   */
+  private updateChangelog(label: string): Promise<void> {
+    if (!this.cli.isInLogMode()) {
+      return;
+    }
+
+    return this.changelog.backup()
+      .then(() => this.changelog.update())
+      .then(() => {
+        if (this.cli.shouldCommit() === false) {
+          return this.logger.info(`Bump to ${label} completed, no commits made.`);
+        }
+
+        // commit the changes
+        return this.changelog.getFilePath().then(path => {
+          const options = {
+            files:   {paths: [path]},
+            message: `docs(changelog): bump to ${label}`,
+          };
+
+          const results = this.gitExec.commit(options);
+
+          this.logger.debug('changelog commit results:', results);
+          this.logger.debug(results);
+          this.logger.info(`Changelog committed with message: '${options.message}'.`);
+        });
+      })
+      .then(() => this.changelog.deleteFile({backup: true}));
+
+  }
+
+  /**
+   * Updates the version of the local package.json file.
+   *
+   * @param {string} label
+   * @return {Promise<void>}
+   */
+  private updatePkgJsonVersion(label: string): Promise<void> {
+    if (this.cli.shouldUpdatePackageVersion() === false) {
+      this.logger.debug('Skipping package.json version update, flag not set.');
+
+      return;
+    } else if (!this.config.isPackageJsonValid()) {
+      this.logger.debug('Skipping package.json version update, invalid file.');
+
+      return;
+    }
+
+    const file       = this.config.getPackageJson();
+    file.pkg.version = this.updateLabelPrefix(label, false);
+
+    this.changelog.getFileExec()
+      .write(file.path + '/package.json', JSON.stringify(file.pkg))
+      .then(() => this.logger.info(`Package updated with version '${label}'.`));
   }
 }
