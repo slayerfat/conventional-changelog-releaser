@@ -339,17 +339,23 @@ describe('Releaser CLI', () => {
     });
 
     describe('package.json operations', () => {
-      it('should update the version as default', done => {
+      let cli;
+      let fileExec;
+
+      beforeEach(() => {
         prompt.setResponse('confirm', {message: messages.noValidTag}, true);
         prompt.setResponse('confirm', {message: messages.noTag}, true);
 
-        const cli = new CliBootstrapMock();
-        cli.setFlag('pkg-version', true);
-
-        releaser       = makeNewReleaser({fPrompt: prompt, cli, pkgUp});
-        const fileExec = new FileExecutor();
+        cli      = new CliBootstrapMock();
+        fileExec = new FileExecutor();
 
         shell.touch('package.json');
+      });
+
+      it('should update the version as default', done => {
+        cli.setFlag('pkg-version', true);
+
+        releaser = makeNewReleaser({fPrompt: prompt, cli, pkgUp});
 
         const pkgData = JSON.stringify({version: '0.0.0'});
 
@@ -362,6 +368,26 @@ describe('Releaser CLI', () => {
             expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
             expect(file).to.not.be.undefined;
             expect(file.version).to.equal('15.0.0');
+            done();
+          }).catch(err => done(err));
+      });
+
+      it('should not alter file if flag set to false', done => {
+        cli.setFlag('pkg-version', false);
+
+        releaser = makeNewReleaser({fPrompt: prompt, cli, pkgUp});
+
+        const pkgData = JSON.stringify({version: '99.99.77'});
+
+        fileExec.write('package.json', pkgData)
+          .then(() => releaser.init())
+          .then(() => fileExec.read('package.json'))
+          .then(data => JSON.parse(data))
+          .then((file) => {
+            expect(gitExec.isAnyTagPresent()).to.be.true;
+            expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+            expect(file).to.not.be.undefined;
+            expect(file.version).to.equal('99.99.77');
             done();
           }).catch(err => done(err));
       });
