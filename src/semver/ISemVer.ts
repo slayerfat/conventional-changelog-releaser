@@ -11,9 +11,9 @@ export interface ISemVer {
    *
    * @param v
    * @param release
-   * @param loose
+   * @param identifier
    */
-  inc(v: string, release: string, loose?: boolean): string;
+  inc(v: string, release: string, identifier?: string): string;
 
   /**
    * The reverse of compare.

@@ -9,7 +9,7 @@ export class SemVerMock extends AbstractMockWithResponses implements ISemVer {
     return results.response;
   }
 
-  public inc(v: string, release: string, loose?: boolean): string {
+  public inc(v: string, release: string, indentifier?: string): string {
     return null;
   }
 
