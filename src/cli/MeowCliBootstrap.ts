@@ -31,14 +31,14 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -f,  --forced       Tries to bump without significant changes in the current repository.
       -h,  --help         This help message.
       -i,  --identifier   The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
-      -j,  --json         Attempts to find a valid package.json file inside the working dir.
+      -j,  --json         Attempts to find a valid package.json file inside cwd, defaults to true.
       -l,  --log          Create or alter existing Changelog.md file, defaults to true.
       -n,  --npm-publish  Tries to publish the new version to npm.
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
       -r,  --release      The release type: major, minor, patch, etc. Ignored on auto-check.
       -R,  --reset        Resets the internal configuration (stored package.json, git config, etc).
-      -v,  --pkg-version  Updates the package version number, defaults to true.
+      -v,  --pkg-version  Updates the package.json version number, defaults to true.
 
     Examples
       Assuming the current branch is release/1.1.2 with no new features:
@@ -167,6 +167,10 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public shouldCommit(): boolean {
     return this.getFlag('commit');
+  }
+
+  public getLabelIdentifier(): string {
+    return this.getFlag('identifier');
   }
 
   /**

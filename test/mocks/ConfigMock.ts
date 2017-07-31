@@ -73,6 +73,22 @@ export class ConfigMock implements IConfig {
     this.config = {};
   }
 
+  public setConfigured(value: boolean) {
+    this.setConfig('configured', value);
+  }
+
+  public isConfigured(): boolean {
+    return this.getConfig('configured');
+  }
+
+  public setDevelopBranchName(value: string): void {
+    this.setConfig('develop-branch-name', value);
+  }
+
+  public getDevelopBranchName(): string {
+    return this.getConfig('develop-branch-name');
+  }
+
   private hasConfig(name) {
     return this.config[name] !== undefined;
   }

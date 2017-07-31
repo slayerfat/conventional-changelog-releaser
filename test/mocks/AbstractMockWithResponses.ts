@@ -8,13 +8,7 @@ export abstract class AbstractMockWithResponses {
    * @return {IMockResponse}
    */
   protected findResponse(method: string, options: {[name: string]: string}) {
-    const key = Object.keys(options);
-
-    if (key.length !== 1) {
-      throw new Error(`Invalid options, must have only one key, ${key.length} found.`);
-    }
-
-    const operatorName = key[0];
+    const operatorName = Object.keys(options)[0];
     const operator     = options[operatorName];
 
     const index = this.responses.findIndex(res => {

@@ -54,7 +54,7 @@ export class Releaser {
    *
    * @type {string}
    */
-  private firstLabel = '0.1.0';
+  private firstLabel = '0.0.0';
 
   /**
    * Construct a new Releaser with the given parameters.
@@ -93,12 +93,8 @@ export class Releaser {
     this.logger.debug('starting');
 
     this.cli.init();
-    this.setDefaultConfig();
 
-    if (!this.config.isPackageJsonExhausted()) {
-      await this.setPackageJsonInConfig();
-    }
-
+    await this.setDefaultConfig();
     await this.syncSemVerVersions();
 
     if (this.config.isPackageJsonValid() || this.config.hasCurrentSemVer()) {
@@ -113,11 +109,23 @@ export class Releaser {
    *
    * @return void
    */
-  private setDefaultConfig(): void {
+  private async setDefaultConfig(): Promise<void> {
     this.repoRootPath = this.gitExec.findBranchRootDir();
 
     if (this.cli.isReset()) this.config.reset();
     if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
+
+    if (this.config.isConfigured()) {
+      return;
+    }
+
+    if (!this.config.isPackageJsonExhausted()) {
+      await this.setPackageJsonInConfig();
+    }
+
+    await this.askUserAboutDevelopBranch();
+
+    this.config.setConfigured(true);
   }
 
   /**
@@ -242,6 +250,26 @@ export class Releaser {
   }
 
   /**
+   * Prompt user about the develop branch in repo.
+   *
+   * @return {Promise<void>}
+   */
+  private async askUserAboutDevelopBranch(): Promise<void> {
+    const answer = await this.prompt.confirm('Is this repo using a develop branch?');
+
+    if (answer !== true) {
+      return;
+    }
+
+    const input = await this.prompt.input(
+      'Whats the develop branch name? [develop]',
+      'develop',
+    );
+
+    this.config.setDevelopBranchName(input);
+  }
+
+  /**
    * Handles an user prompt response about the findings of a particular package.json file.
    *
    * @param {string} answer The answer the user gave.
@@ -296,35 +324,47 @@ export class Releaser {
   private async bump(): Promise<void> {
     const status = await this.getBranchStatus();
 
+    this.logger.debug(`the branch status is ${status}`);
+
     switch (status) {
       case BRANCH_STATUSES.PRISTINE:
         if (!this.cli.isForced()) {
           throw new Error(Releaser.errors.noNewCommit);
         }
 
-        return this.handleBumpLabelCommit();
+        return this.handleBumpLabelCommit(
+          this.constructNewLabel(this.getCurrentTag(), this.getBumpType()),
+        );
       case BRANCH_STATUSES.VALID:
         if (this.config.isPackageJsonValid()) {
-          const label = this.updateLabelPrefix(this.config.getPackageJsonVersion());
-
-          return this.handleBumpLabelCommit(label);
+          return this.handleBumpLabelCommit(
+            this.updateLabelPrefix(this.config.getPackageJsonVersion()),
+          );
         }
 
-        return this.handleBumpLabelCommit();
+        return this.handleBumpLabelCommit(
+          this.constructNewLabel(this.getCurrentTag(), this.getBumpType()),
+        );
       case BRANCH_STATUSES.FIRST_TAG:
-        return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));
+        return this.handleBumpLabelCommit(
+          this.constructNewLabel(this.updateLabelPrefix(this.firstLabel), this.getBumpType()),
+        );
       case BRANCH_STATUSES.NO_TAG:
         if (this.config.isPackageJsonValid()) {
-          const label = this.updateLabelPrefix(this.config.getPackageJsonVersion());
-
-          return this.handleBumpLabelCommit(label);
+          return this.handleBumpLabelCommit(
+            this.updateLabelPrefix(this.config.getPackageJsonVersion()),
+          );
         }
 
         const answer = await this.prompt.confirm(`${Releaser.errors.noTag} Create first tag?`);
 
-        if (answer === false) throw new UserAbortedError();
+        if (answer === false) {
+          throw new UserAbortedError();
+        }
 
-        return this.handleBumpLabelCommit(this.updateLabelPrefix(this.firstLabel));
+        return this.handleBumpLabelCommit(
+          this.constructNewLabel(this.updateLabelPrefix(this.firstLabel), this.getBumpType()),
+        );
       case BRANCH_STATUSES.INVALID_TAG:
         throw new Error(Releaser.errors.invalidTag);
       default:
@@ -376,7 +416,7 @@ export class Releaser {
    * @return {string}
    */
   private constructNewLabel(name: string, type: string) {
-    const label = this.incrementSemVer(name, type);
+    const label = this.incrementSemVer(name, type, this.cli.getLabelIdentifier());
 
     return this.updateLabelPrefix(label);
   }
@@ -387,8 +427,14 @@ export class Releaser {
    * @return {string}
    */
   private getBumpType(): string {
-    return this.cli.isAuto() ?
+    const type = this.cli.isAuto() ?
       this.bumpFinder.getBumpType() : this.cli.getRelease();
+
+    if (this.gitExec.getCurrentBranchName() === this.config.getDevelopBranchName()) {
+      return 'pre'.concat(type);
+    }
+
+    return type;
   }
 
   /**
@@ -404,19 +450,7 @@ export class Releaser {
       throw new Error(`The provided label ${label} does not follow semver.`);
     }
 
-    switch (type) {
-      case 'prerelease':
-        return this.semver.inc(label, type, suffix as any);
-      case 'major':
-      case 'minor':
-      case 'patch':
-      case 'premajor':
-      case 'preminor':
-      case 'prepatch':
-        return this.semver.inc(label, type);
-      default:
-        throw new Error(`Invalid type ${type} provided.`);
-    }
+    return this.semver.inc(label, type, suffix);
   }
 
   /**
@@ -424,9 +458,7 @@ export class Releaser {
    *
    * @param label
    */
-  private async handleBumpLabelCommit(label?: string): Promise<void> {
-    label = label || this.constructNewLabel(this.getCurrentTag(), this.getBumpType());
-
+  private async handleBumpLabelCommit(label: string): Promise<void> {
     return Promise.resolve()
       .then(() => this.updateChangelog(label))
       .then(() => this.createTag(label))

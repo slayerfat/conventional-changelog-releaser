@@ -98,4 +98,11 @@ export interface ICliBootstrap {
    * @return {boolean}
    */
   isInLogMode(): boolean;
+
+  /**
+   * Gets the label identifier or suffix used in pre-releases.
+   *
+   * @return {string}
+   */
+  getLabelIdentifier(): string;
 }
