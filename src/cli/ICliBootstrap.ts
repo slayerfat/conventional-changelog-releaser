@@ -98,4 +98,11 @@ export interface ICliBootstrap {
    * @return {string}
    */
   getLabelIdentifier(): string;
+
+  /**
+   * Sets the release type of the bump.
+   *
+   * @param {string} type
+   */
+  setReleaseType(type: string): void;
 }

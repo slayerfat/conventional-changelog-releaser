@@ -119,6 +119,8 @@ export class Releaser {
       return;
     }
 
+    await this.checkReleaseOnInit();
+
     if (!this.config.isPackageJsonExhausted()) {
       await this.setPackageJsonInConfig();
     }
@@ -593,5 +595,32 @@ export class Releaser {
     this.changelog.getFileExec()
       .write(file.path + '/package.json', JSON.stringify(file.pkg))
       .then(() => this.logger.info(`Package updated with version '${label}'.`));
+  }
+
+  /**
+   * Checks if the user wants a specific release.
+   *
+   * @return {Promise<void>}
+   */
+  private async checkReleaseOnInit(): Promise<void> {
+    if (typeof this.cli.getRelease() === 'string') {
+      return;
+    }
+
+    let answer = await this.prompt.list('What type of increment do you want?', [
+      'automatic',
+      'major',
+      'minor',
+      'patch',
+      'premajor',
+      'preminor',
+      'prepatch',
+    ]);
+
+    if (answer === 'automatic') {
+      answer = null;
+    }
+
+    this.cli.setReleaseType(answer);
   }
 }

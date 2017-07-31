@@ -37,6 +37,7 @@ describe('Releaser CLI', () => {
   const messages = {
     branch:     'Is this repo using a develop branch?',
     branchName: 'Whats the develop branch name? [develop]',
+    bumpType:   'What type of increment do you want?',
     noTag:      'No tags are found. Create first tag?',
     noValidTag: 'No valid semver tags found, continue?',
   };
@@ -577,6 +578,21 @@ describe('Releaser CLI', () => {
           expect(gitExec.isAnyTagPresent()).to.be.true;
           expect(gitExec.getCurrentBranchName()).to.equal('test');
           expect(gitExec.isTagPresent('v0.1.0-0')).to.be.true;
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('should ask the user for the bump type', done => {
+      prompt.setResponse('confirm', {message: messages.branch}, false);
+      prompt.setResponse('list', {message: messages.bumpType}, 'major');
+
+      releaser = makeNewReleaser({fPrompt: prompt});
+
+      releaser.init()
+        .then(() => {
+          expect(gitExec.isTagPresent('v1.0.0')).to.be.true;
 
           done();
         })

@@ -38,4 +38,8 @@ export class CliBootstrapMock extends MeowCliBootstrap {
   public setInput(name, value): void {
     this.inputs[name] = value;
   }
+
+  public setReleaseType(type: string): void {
+    this.setFlag('release', type);
+  }
 }

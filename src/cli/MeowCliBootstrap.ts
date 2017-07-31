@@ -163,4 +163,8 @@ export class MeowCliBootstrap implements ICliBootstrap {
   public getLabelIdentifier(): string {
     return this.getFlag('identifier');
   }
+
+  public setReleaseType(type: string): void {
+    this.cli.flags.release = type;
+  }
 }
