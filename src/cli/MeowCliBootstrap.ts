@@ -26,7 +26,6 @@ export class MeowCliBootstrap implements ICliBootstrap {
       $ ccr <input>
 
     Options
-      -a,  --auto         Checks the commits and uses the appropriate bump type, defaults to true.
       -c,  --commit       Commits the bump in version control, defaults to true.
       -f,  --forced       Tries to bump without significant changes in the current repository.
       -h,  --help         This help message.
@@ -36,7 +35,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       -n,  --npm-publish  Tries to publish the new version to npm.
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
-      -r,  --release      The release type: major, minor, patch, etc. Ignored on auto-check.
+      -r,  --release      The release type: major, minor, patch, pre-major, etc, defaults to auto.
       -R,  --reset        Resets the internal configuration (stored package.json, git config, etc).
       -v,  --pkg-version  Updates the package.json version number, defaults to true.
 
@@ -70,7 +69,6 @@ export class MeowCliBootstrap implements ICliBootstrap {
    */
   private minimistOptions: minimist.Opts = {
     alias:   {
-      a: 'auto',
       c: 'commit',
       d: 'dry',
       f: 'forced',
@@ -86,7 +84,6 @@ export class MeowCliBootstrap implements ICliBootstrap {
       v: 'pkg-version',
     },
     boolean: [
-      'auto',
       'commit',
       'dry',
       'forced',
@@ -99,22 +96,20 @@ export class MeowCliBootstrap implements ICliBootstrap {
       'reset',
     ],
     default: {
-      auto:          true,
-      commit:        true,
-      dry:           false,
-      forced:        false,
-      json:          false,
-      log:           true,
+      'commit':      true,
+      'dry':         false,
+      'forced':      false,
+      'json':        false,
+      'log':         true,
       'pkg-version': true,
-      prefix:        true,
-      reset:         false,
+      'prefix':      true,
+      'reset':       false,
     },
     string:  ['identifier', 'release'],
   };
 
   public init() {
     this.cli = meow(this.helpText, this.minimistOptions);
-    this.checkPreconditions();
   }
 
   public getInputs(): string[] {
@@ -131,10 +126,6 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public showHelp(code?: number): void {
     throw this.cli.showHelp(code);
-  }
-
-  public isAuto(): boolean {
-    return this.getFlag('auto');
   }
 
   public isInLogMode(): boolean {
@@ -171,16 +162,5 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public getLabelIdentifier(): string {
     return this.getFlag('identifier');
-  }
-
-  /**
-   * Checks all the preconditions the cli must have to run.
-   *
-   * @return {void}
-   */
-  private checkPreconditions(): void {
-    if (!this.isAuto() && this.getRelease() === undefined) {
-      throw new Error('Release type must be set if not in auto mode.');
-    }
   }
 }

@@ -337,9 +337,7 @@ export class Releaser {
         );
       case BRANCH_STATUSES.VALID:
         if (this.config.isPackageJsonValid()) {
-          return this.handleBumpLabelCommit(
-            this.updateLabelPrefix(this.config.getPackageJsonVersion()),
-          );
+          return this.constructLabelFromPkgJson();
         }
 
         return this.handleBumpLabelCommit(
@@ -351,9 +349,7 @@ export class Releaser {
         );
       case BRANCH_STATUSES.NO_TAG:
         if (this.config.isPackageJsonValid()) {
-          return this.handleBumpLabelCommit(
-            this.updateLabelPrefix(this.config.getPackageJsonVersion()),
-          );
+          return this.constructLabelFromPkgJson();
         }
 
         const answer = await this.prompt.confirm(`${Releaser.errors.noTag} Create first tag?`);
@@ -370,6 +366,18 @@ export class Releaser {
       default:
         throw new Error('Unknown branch status.');
     }
+  }
+
+  /**
+   * Creates a new valid label from the package.json version number.
+   *
+   * @return {Promise<void>}
+   */
+  private constructLabelFromPkgJson(): Promise<void> {
+    return this.handleBumpLabelCommit(this.constructNewLabel(
+      this.updateLabelPrefix(this.config.getPackageJsonVersion()),
+      this.getBumpType(),
+    ));
   }
 
   /**
@@ -416,7 +424,10 @@ export class Releaser {
    * @return {string}
    */
   private constructNewLabel(name: string, type: string) {
-    const label = this.incrementSemVer(name, type, this.cli.getLabelIdentifier());
+    const identifier = this.cli.getLabelIdentifier();
+    const label      = this.incrementSemVer(name, type, identifier);
+
+    this.logger.debug(`made ${label}, with ${name}, ${type} and identifier ${identifier}`);
 
     return this.updateLabelPrefix(label);
   }
@@ -427,7 +438,7 @@ export class Releaser {
    * @return {string}
    */
   private getBumpType(): string {
-    const type = this.cli.isAuto() ?
+    const type = this.cli.getRelease() === undefined ?
       this.bumpFinder.getBumpType() : this.cli.getRelease();
 
     if (this.gitExec.getCurrentBranchName() === this.config.getDevelopBranchName()) {
