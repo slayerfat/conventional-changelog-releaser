@@ -37,13 +37,6 @@ export interface ICliBootstrap {
   showHelp(code?: number): void;
 
   /**
-   * Gets the auto flag from the cli.
-   *
-   * @return {boolean}
-   */
-  isAuto(): boolean;
-
-  /**
    * Gets the forced flag from the cli.
    *
    * @return {boolean}
@@ -98,4 +91,11 @@ export interface ICliBootstrap {
    * @return {boolean}
    */
   isInLogMode(): boolean;
+
+  /**
+   * Gets the label identifier or suffix used in pre-releases.
+   *
+   * @return {string}
+   */
+  getLabelIdentifier(): string;
 }

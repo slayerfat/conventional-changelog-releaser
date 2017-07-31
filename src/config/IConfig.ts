@@ -107,4 +107,32 @@ export interface IConfig {
    * @return void
    */
   reset(): void;
+
+  /**
+   * Sets the configured flag by the user.
+   *
+   * @param {boolean} value
+   */
+  setConfigured(value: boolean);
+
+  /**
+   * Tells if the configuration has been set for the first time.
+   *
+   * @return {boolean}
+   */
+  isConfigured(): boolean;
+
+  /**
+   * Sets the develop branch name from the user.
+   *
+   * @param {string} value
+   */
+  setDevelopBranchName(value: string): void;
+
+  /**
+   * Gets the develop branch name set by the user.
+   *
+   * @return {string}
+   */
+  getDevelopBranchName(): string;
 }

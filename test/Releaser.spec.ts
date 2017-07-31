@@ -23,13 +23,20 @@ import {Changelog} from '../src/changelog/Changelog';
 import {ChangelogNotFoundError} from '../src/exceptions/ChangelogNotFoundError';
 
 // chai.expect shows as an unused expression
-/* tslint:disable:no-unused-expression */
+// tslint:disable:no-unused-expression
 
 describe('Releaser CLI', () => {
   let releaser: Releaser;
   let prompt;
-  const gitExec  = new GitExecutorSync();
+
+  const gitExec = new GitExecutorSync();
+
+  const loggingLogger = new LoggerMock();
+  loggingLogger.setShouldLog(true);
+
   const messages = {
+    branch:     'Is this repo using a develop branch?',
+    branchName: 'Whats the develop branch name? [develop]',
     noTag:      'No tags are found. Create first tag?',
     noValidTag: 'No valid semver tags found, continue?',
   };
@@ -90,6 +97,10 @@ describe('Releaser CLI', () => {
   });
 
   describe('case: no tag and no package.json', () => {
+    beforeEach(() => {
+      prompt.setResponse('confirm', {message: messages.branch}, false);
+    });
+
     it('should bump to minor (v0.1.0) if user continues', done => {
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
@@ -130,6 +141,10 @@ describe('Releaser CLI', () => {
   });
 
   describe('case: tag and no package.json', () => {
+    beforeEach(() => {
+      prompt.setResponse('confirm', {message: messages.branch}, false);
+    });
+
     it('should ask user about valid non-prefixed semver with prefix flag as true', done => {
       gitExec.createTag('0.1.0');
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
@@ -165,13 +180,46 @@ describe('Releaser CLI', () => {
       }).catch(err => done(err));
     });
 
+    it('should read release flag before auto-bump', done => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      const cli = new CliBootstrapMock();
+      cli.setFlag('release', 'major');
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v1.0.0')).to.be.true;
+
+        done();
+      }).catch(err => done(err));
+    });
+
+    it('should bump with suffix if identifier is set', done => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      const cli = new CliBootstrapMock();
+      cli.setFlag('identifier', 'omega');
+      cli.setFlag('release', 'preminor');
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init().then(() => {
+        expect(gitExec.isTagPresent('v0.1.0-omega.0')).to.be.true;
+
+        done();
+      }).catch(err => done(err));
+    });
+
     it('should throw no new commits when prefix is set to false with valid tag', done => {
       gitExec.createTag('0.1.0');
 
       const cli = new CliBootstrapMock();
       cli.setFlag('prefix', false);
 
-      releaser = makeNewReleaser({cli});
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
 
       releaser.init().catch(err => {
         expect(err.message).to.equal(Releaser.errors.noNewCommit);
@@ -188,6 +236,8 @@ describe('Releaser CLI', () => {
     beforeEach(() => {
       pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
       pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
+
+      prompt.setResponse('confirm', {message: messages.branch}, false);
     });
 
     describe('package.json found prompt', () => {
@@ -199,7 +249,7 @@ describe('Releaser CLI', () => {
         releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
         releaser.init().then(() => {
-          expect(gitExec.isTagPresent('v3.0.0')).to.be.true;
+          expect(gitExec.isTagPresent('v3.1.0')).to.be.true;
 
           done();
         }).catch(err => done(err));
@@ -239,6 +289,7 @@ describe('Releaser CLI', () => {
       const pkgUp2  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '5.1.0'}));
       const prompt2 = new PromptMock();
       prompt2.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt2.setResponse('confirm', {message: messages.branch}, false);
       prompt2.setResponse(
         'confirm',
         {message: 'Tag v5.1.0 is not present in repository, continue?'},
@@ -248,6 +299,7 @@ describe('Releaser CLI', () => {
       const pkgUp3  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '9.2.3'}));
       const prompt3 = new PromptMock();
       prompt3.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt3.setResponse('confirm', {message: messages.branch}, false);
       prompt3.setResponse(
         'confirm',
         {message: 'Tag v9.2.3 is not present in repository, continue?'},
@@ -262,23 +314,23 @@ describe('Releaser CLI', () => {
 
       releaser.init()
         .then(() => {
-          expect(gitExec.isTagPresent('v3.0.0')).to.be.true;
+          expect(gitExec.isTagPresent('v3.1.0')).to.be.true;
 
           shell.exec('touch something && git add --all && git commit -m "a commit"');
-          expect(gitExec.isTagPresent('v3.1.0')).to.be.false;
           expect(gitExec.isTagPresent('v5.1.0')).to.be.false;
+          expect(gitExec.isTagPresent('v5.2.0')).to.be.false;
 
           return releaser2.init();
         })
         .then(() => {
-          expect(gitExec.isTagPresent('v3.1.0')).to.be.false;
-          expect(gitExec.isTagPresent('v5.1.0')).to.be.true;
+          expect(gitExec.isTagPresent('v3.2.0')).to.be.false;
+          expect(gitExec.isTagPresent('v5.2.0')).to.be.true;
           expect(gitExec.isTagPresent('v9.2.3')).to.be.false;
           shell.exec('touch file && git add --all && git commit -m "another commit"');
 
           return releaser3.init();
         })
-        .then(() => expect(gitExec.isTagPresent('v9.2.3')).to.be.true)
+        .then(() => expect(gitExec.isTagPresent('v9.3.0')).to.be.true)
         .then(() => done())
         .catch(err => done(err));
     });
@@ -292,6 +344,7 @@ describe('Releaser CLI', () => {
       pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
       pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
       prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt.setResponse('confirm', {message: messages.branch}, false);
 
       prompt.setResponse(
         'confirm',
@@ -331,7 +384,7 @@ describe('Releaser CLI', () => {
         .then(() => {
           expect(gitExec.isTagPresent('v1.1.0')).to.be.false;
           expect(gitExec.isTagPresent('v2.0.0')).to.be.false;
-          expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+          expect(gitExec.isTagPresent('v15.1.0')).to.be.true;
 
           done();
         })
@@ -365,9 +418,9 @@ describe('Releaser CLI', () => {
           .then(data => JSON.parse(data))
           .then((file) => {
             expect(gitExec.isAnyTagPresent()).to.be.true;
-            expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+            expect(gitExec.isTagPresent('v15.1.0')).to.be.true;
             expect(file).to.not.be.undefined;
-            expect(file.version).to.equal('15.0.0');
+            expect(file.version).to.equal('15.1.0');
             done();
           }).catch(err => done(err));
       });
@@ -385,7 +438,7 @@ describe('Releaser CLI', () => {
           .then(data => JSON.parse(data))
           .then((file) => {
             expect(gitExec.isAnyTagPresent()).to.be.true;
-            expect(gitExec.isTagPresent('v15.0.0')).to.be.true;
+            expect(gitExec.isTagPresent('v15.1.0')).to.be.true;
             expect(file).to.not.be.undefined;
             expect(file.version).to.equal('99.99.77');
             done();
@@ -400,6 +453,10 @@ describe('Releaser CLI', () => {
     before(() => {
       cli = new CliBootstrapMock();
       cli.setFlag('log', true);
+    });
+
+    beforeEach(() => {
+      prompt.setResponse('confirm', {message: messages.branch}, false);
     });
 
     it('should throw error and abort if no changelog is found', (done) => {
@@ -450,6 +507,7 @@ describe('Releaser CLI', () => {
 
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
+      prompt.setResponse('confirm', {message: messages.branch}, false);
     });
 
     it('should commit on bump as default', done => {
@@ -482,6 +540,47 @@ describe('Releaser CLI', () => {
 
         done();
       }).catch(err => done(err));
+    });
+  });
+
+  describe('configuration related operations', () => {
+    beforeEach(() => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+    });
+
+    it('should not prompt user if already configured', done => {
+      const config = new ConfigMock();
+      config.setConfigured(true);
+
+      releaser = makeNewReleaser({config, fPrompt: prompt});
+
+      releaser.init()
+        .then(() => {
+          expect(gitExec.isAnyTagPresent()).to.be.true;
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('should ask the user for the develop branch name at start', done => {
+      prompt.setResponse('confirm', {message: messages.branch}, true);
+      prompt.setResponse('input', {message: messages.branchName}, 'test');
+
+      shell.exec('git checkout -b test');
+
+      releaser = makeNewReleaser({fPrompt: prompt});
+
+      releaser.init()
+        .then(() => {
+          expect(gitExec.isAnyTagPresent()).to.be.true;
+          expect(gitExec.getCurrentBranchName()).to.equal('test');
+          expect(gitExec.isTagPresent('v0.1.0-0')).to.be.true;
+
+          done();
+        })
+        .catch(err => done(err));
     });
   });
 });

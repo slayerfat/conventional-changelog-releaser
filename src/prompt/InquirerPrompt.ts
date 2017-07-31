@@ -33,4 +33,16 @@ export class InquirerPrompt implements IPrompt {
     return prompt(question)
       .then(answer => answer[this.questionName]);
   }
+
+  public input(message: string, defaultAnswer?: string): Promise<string> {
+    const question = {
+      default: defaultAnswer,
+      message,
+      name:    this.questionName,
+      type:    'input',
+    };
+
+    return prompt(question)
+      .then(answer => answer[this.questionName]);
+  }
 }

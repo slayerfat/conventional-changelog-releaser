@@ -66,4 +66,20 @@ export class ConfigStoreConfig implements IConfig {
   public reset(): void {
     this.config.clear();
   }
+
+  public setConfigured(value: boolean) {
+    this.config.set('configured', value);
+  }
+
+  public isConfigured(): boolean {
+    return this.config.get('configured');
+  }
+
+  public setDevelopBranchName(value: string): void {
+    this.config.set('develop-branch-name', value);
+  }
+
+  public getDevelopBranchName(): string {
+    return this.config.get('develop-branch-name');
+  }
 }
