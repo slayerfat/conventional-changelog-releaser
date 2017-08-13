@@ -483,7 +483,7 @@ describe('Releaser CLI', function() {
   });
 
   describe('changelog related operations', () => {
-    let cli;
+    let cli: CliBootstrapMock;
 
     before(() => {
       cli = new CliBootstrapMock();
@@ -494,7 +494,6 @@ describe('Releaser CLI', function() {
       prompt.setResponse('confirm', {message: messages.branch}, false);
     });
 
-    // TODO add log flag (should not abort if no log flag)
     it('should throw error and abort if no changelog is found', (done) => {
       shell.rm('changelog.md');
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
@@ -505,6 +504,30 @@ describe('Releaser CLI', function() {
 
       releaser.init()
         .then(() => done(new Error()))
+        .catch(err => {
+          expect(err.message).to.equal(ChangelogNotFoundError.getMessage());
+          expect(gitExec.isAnyTagPresent()).to.be.false;
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        });
+    });
+
+    it('should not abort if log flag is false', (done) => {
+      shell.rm('changelog.md');
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
+
+      cli.setFlag('log', false);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init()
+        .then(() => {
+          expect(() => prompt.checkResponses()).to.not.throw();
+          done();
+        })
         .catch(err => {
           expect(err.message).to.equal(ChangelogNotFoundError.getMessage());
           expect(gitExec.isAnyTagPresent()).to.be.false;
