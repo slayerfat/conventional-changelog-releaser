@@ -1,8 +1,11 @@
 import {FileExecutor} from '../exec/FileExecutor';
 import {ChangelogNotFoundError} from '../exceptions/ChangelogNotFoundError';
 import {access, createWriteStream} from 'fs';
-import * as conLog from 'conventional-changelog';
+import * as conLog from 'conventional-changelog-core';
 
+/**
+ * @see https://github.com/conventional-changelog-archived-repos/conventional-changelog-core
+ */
 export class Changelog {
   public static errors = {
     backupNotFound: 'The changelog backup file was not found.',
@@ -32,11 +35,19 @@ export class Changelog {
    *
    * @param {string} preset Possible values: 'angular', 'atom', 'codemirror', 'ember',
    * 'eslint', 'express', 'jquery', 'jscs', 'jshint'
+   * @param {boolean} append Should the log be appended to existing data.
    */
-  public async update(preset = 'angular'): Promise<void> {
+  public async update(preset = 'angular', append = true): Promise<void> {
+    // https://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options
+    const options: {flags?: string} = {};
+
+    if (append === true) {
+      options.flags = 'a';
+    }
+
     return this.getFilePath().then(path => {
       return new Promise<void>((resolve, reject) => {
-        const changelogStream = createWriteStream(path);
+        const changelogStream = createWriteStream(path, options);
         const onErrorCB       = (err) => reject(err);
 
         changelogStream.on('error', onErrorCB);

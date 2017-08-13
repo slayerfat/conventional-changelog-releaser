@@ -5,9 +5,11 @@ export class CliBootstrapMock extends MeowCliBootstrap {
   private inputs: string[] = [];
 
   private flags: IFlagsObject = {
-    auto:   true,
-    commit: true,
-    prefix: true,
+    'auto':       true,
+    'commit':     true,
+    'log-append': true,
+    'log-preset': 'angular',
+    'prefix':     true,
   };
 
   public init() {

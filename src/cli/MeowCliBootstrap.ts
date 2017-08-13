@@ -26,12 +26,14 @@ export class MeowCliBootstrap implements ICliBootstrap {
       $ ccr <input>
 
     Options
+      -a,  --log-append   Appends new data to the existing log, defaults to true.
       -c,  --commit       Commits the bump in version control, defaults to true.
       -f,  --forced       Tries to bump without significant changes in the current repository.
       -h,  --help         This help message.
       -i,  --identifier   The pre-release identifier, defaults to none, example: v0.0.1-epsilon.0.
       -j,  --json         Attempts to find a valid package.json file inside cwd, defaults to true.
       -l,  --log          Create or alter existing Changelog.md file, defaults to true.
+      -L,  --log-preset   The changelog convention, defaults to angular.
       -n,  --npm-publish  Tries to publish the new version to npm.
       -p,  --pre          Bumps as a pre-release, example: v1.0.1-0.
       -P,  --prefix       The tag prefix, adds v before the tag, example: v0.0.1, defaults to true.
@@ -69,6 +71,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
    */
   private minimistOptions: minimist.Opts = {
     alias:   {
+      a: 'log-append',
       c: 'commit',
       d: 'dry',
       f: 'forced',
@@ -76,6 +79,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       i: 'identifier',
       j: 'json',
       l: 'log',
+      L: 'log-preset',
       n: 'npm-publish',
       p: 'pre',
       P: 'prefix',
@@ -84,6 +88,7 @@ export class MeowCliBootstrap implements ICliBootstrap {
       v: 'pkg-version',
     },
     boolean: [
+      'log-append',
       'commit',
       'dry',
       'forced',
@@ -101,11 +106,12 @@ export class MeowCliBootstrap implements ICliBootstrap {
       'forced':      false,
       'json':        false,
       'log':         true,
+      'log-append':  true,
       'pkg-version': true,
       'prefix':      true,
       'reset':       false,
     },
-    string:  ['identifier', 'release'],
+    string:  ['identifier', 'release', 'log-preset'],
   };
 
   public init() {
@@ -166,5 +172,13 @@ export class MeowCliBootstrap implements ICliBootstrap {
 
   public setReleaseType(type: string): void {
     this.cli.flags.release = type;
+  }
+
+  public getChangelogPreset(): string {
+    return this.getFlag('log-preset');
+  }
+
+  public isInAppendChangelog(): boolean {
+    return this.getFlag('log-append');
   }
 }

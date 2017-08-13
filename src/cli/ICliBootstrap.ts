@@ -105,4 +105,18 @@ export interface ICliBootstrap {
    * @param {string} type
    */
   setReleaseType(type: string): void;
+
+  /**
+   * Gets the changelog preset convention identifier.
+   *
+   * @return {string}
+   */
+  getChangelogPreset(): string;
+
+  /**
+   * Gets the changelog append flag from the cli.
+   *
+   * @return {boolean}
+   */
+  isInAppendChangelog(): boolean;
 }

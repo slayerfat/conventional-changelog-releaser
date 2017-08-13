@@ -1,3 +1,3 @@
 export interface IFlagsObject {
-  [flagName: string]: boolean;
+  [flagName: string]: string | boolean;
 }

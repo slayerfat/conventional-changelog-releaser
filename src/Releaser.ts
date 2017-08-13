@@ -556,7 +556,15 @@ export class Releaser {
     }
 
     return this.changelog.backup()
-      .then(() => this.changelog.update())
+      .then(() => {
+        const preset       = this.cli.getChangelogPreset();
+        const shouldAppend = this.cli.isInAppendChangelog();
+
+        this.logger.debug(`Setting changelog with preset ${preset}`);
+        this.logger.debug(`Should append to changelog ${shouldAppend}`);
+
+        return this.changelog.update(preset, shouldAppend);
+      })
       .then(() => {
         if (this.cli.shouldCommit() === false) {
           return this.logger.info(`Bump to ${label} completed, no commits made.`);

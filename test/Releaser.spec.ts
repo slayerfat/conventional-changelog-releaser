@@ -545,6 +545,67 @@ describe('Releaser CLI', function() {
         done();
       }).catch(err => done(err));
     });
+
+    it('should not delete previous data on changelog file', (done) => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      new FileExecutor().write('changelog.md', 'VALID DATA\n')
+        .then(() => shell.exec('git add --all && git commit -m "feat(changelog): added info"'))
+        .then(() => releaser.init())
+        .then(() => {
+          const command = shell.cat('changelog.md') as any;
+          expect(command.stdout).to.match(/VALID DATA/);
+          expect(command.stdout).to.match(/added info/);
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        }).catch(err => done(err));
+    });
+
+    it('should discard previous data on changelog file if flag is set', (done) => {
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      cli.setFlag('log-append', false);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      new FileExecutor().write('changelog.md', 'VALID DATA')
+        .then(() => shell.exec('git add --all && git commit -m "feat(changelog): added info"'))
+        .then(() => releaser.init())
+        .then(() => {
+          const command = shell.cat('changelog.md') as any;
+          expect(command.stdout).to.not.match(/VALID DATA/);
+          expect(command.stdout).to.match(/added info/);
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        }).catch(err => done(err));
+    });
+
+    it('should update changelog file in another preset convention', (done) => {
+      shell.exec('git add --all && git commit -m ":memo: Add changelog"');
+
+      prompt.setResponse('confirm', {message: messages.noValidTag}, true);
+      prompt.setResponse('confirm', {message: messages.noTag}, true);
+
+      cli.setFlag('log-preset', 'atom');
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      releaser.init()
+        .then(() => {
+          const command = shell.cat('changelog.md') as any;
+          expect(command.stdout).to.match(/:memo: Add changelog/);
+          expect(command.stdout).to.not.match(/Features/);
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        }).catch(err => done(err));
+    });
   });
 
   describe('commit related operations', () => {
