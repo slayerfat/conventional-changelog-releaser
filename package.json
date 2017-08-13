@@ -2,10 +2,10 @@
   "name": "releaser",
   "version": "0.0.0",
   "description": "Under construction",
-  "main": "./lib/main.js",
-  "types": "./lib/main.d.ts",
+  "main": "./lib/src/main.js",
+  "types": "./lib/src/main.d.ts",
   "bin": {
-    "releaser": "./lib/main.js"
+    "releaser": "./lib/src/main.js"
   },
   "scripts": {
     "commitmsg": "validate-commit-msg",
