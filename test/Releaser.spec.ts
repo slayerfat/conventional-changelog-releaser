@@ -622,6 +622,23 @@ describe('Releaser CLI', function() {
         .catch(err => done(err));
     });
 
+    it('should ask for bump type even if already configured', done => {
+      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
+      const config = new ConfigMock();
+      config.setConfigured(true);
+
+      releaser = makeNewReleaser({config, fPrompt: prompt});
+
+      releaser.init()
+        .then(() => {
+          expect(gitExec.isAnyTagPresent()).to.be.true;
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        })
+        .catch(err => done(err));
+    });
+
     it('should ask the user for the develop branch name at start', done => {
       prompt.setResponse('confirm', {message: messages.branch}, true);
       prompt.setResponse('input', {message: messages.branchName}, 'test');

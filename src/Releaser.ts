@@ -115,11 +115,11 @@ export class Releaser {
     if (this.cli.isReset()) this.config.reset();
     if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
 
+    await this.checkReleaseOnInit();
+
     if (this.config.isConfigured()) {
       return this.logger.debug('Already configured, skipping default config.');
     }
-
-    await this.checkReleaseOnInit();
 
     if (!this.config.isPackageJsonExhausted()) {
       await this.setPackageJsonInConfig();
