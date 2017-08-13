@@ -1,0 +1,9 @@
+test/
+src/
+.idea/
+
+/.editorconfig
+/.npmignore
+/tslint.json
+/tsconfig.json
+/.travis.yml
