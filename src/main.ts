@@ -22,12 +22,15 @@ debug.debug('starting');
 // Makes pretty-error render all errors
 PrettyError.start();
 
+const gitExec       = new GitExecutorSync();
+const branchRootDir = gitExec.findBranchRootDir();
+
 const releaser = new Releaser(
   new MeowCliBootstrap(),
   new DebugLogger(Releaser.name),
-  new ConfigStoreConfig(new ConfigStore(Releaser.name)),
+  new ConfigStoreConfig(new ConfigStore(branchRootDir)),
   new BumpFinder(CRBFinder),
-  new GitExecutorSync(),
+  gitExec,
   new InquirerPrompt(),
   new SemVer(),
   readPkgUp,
