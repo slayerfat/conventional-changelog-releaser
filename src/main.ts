@@ -22,7 +22,7 @@ debug.debug('starting');
 // Makes pretty-error render all errors
 PrettyError.start();
 
-const rel = new Releaser(
+const releaser = new Releaser(
   new MeowCliBootstrap(),
   new DebugLogger(Releaser.name),
   new ConfigStoreConfig(new ConfigStore(Releaser.name)),
@@ -34,13 +34,13 @@ const rel = new Releaser(
   new Changelog(new FileExecutor()),
 );
 
-rel.init()
+releaser.init()
   .then(() => debug.debug('cli finished successfully'))
   .catch(reason => {
     if (reason instanceof UserAbortedError) {
-      return this.logger.info('Aborting.');
+      return debug.info('Aborting.');
     } else if (reason === Releaser.errors.noNewCommit) {
-      return this.logger.warn(Releaser.errors.noNewCommit);
+      return debug.warn(Releaser.errors.noNewCommit);
     }
 
     throw reason;
