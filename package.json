@@ -1,11 +1,11 @@
 {
-  "name": "conventional-changelog-releaser",
+  "name": "releaser",
   "version": "0.0.0",
   "description": "Under construction",
   "main": "./lib/main.js",
   "types": "./lib/main.d.ts",
   "bin": {
-    "ccr": "./lib/main.js"
+    "releaser": "./lib/main.js"
   },
   "scripts": {
     "commitmsg": "validate-commit-msg",
@@ -41,14 +41,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/slayerfat/conventional-changelog-releaser.git"
+    "url": "git+https://github.com/slayerfat/releaser.git"
   },
   "author": "Alejandro Granadillo <slayerfat@gmail.com> (http://slayerfat.com.ve/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/slayerfat/conventional-changelog-releaser/issues"
+    "url": "https://github.com/slayerfat/releaser/issues"
   },
-  "homepage": "https://github.com/slayerfat/conventional-changelog-releaser#readme",
+  "homepage": "https://github.com/slayerfat/releaser#readme",
   "devDependencies": {
     "@types/chai": "^3.5.2",
     "@types/configstore": "^2.1.1",
