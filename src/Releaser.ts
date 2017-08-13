@@ -547,7 +547,11 @@ export class Releaser {
    * @return {Promise<void>}
    */
   private updateChangelog(label: string): Promise<void> {
+    this.logger.debug('Starting changelog file update.');
+
     if (!this.cli.isInLogMode()) {
+      this.logger.debug('Skipping changelog update, not in log mode.');
+
       return;
     }
 
