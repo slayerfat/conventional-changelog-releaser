@@ -116,7 +116,7 @@ export class Releaser {
     if (this.cli.isFindJsonMode()) this.config.setPackageJsonExhaustStatus(false);
 
     if (this.config.isConfigured()) {
-      return;
+      return this.logger.debug('Already configured, skipping default config.');
     }
 
     await this.checkReleaseOnInit();
@@ -128,6 +128,7 @@ export class Releaser {
     await this.askUserAboutDevelopBranch();
 
     this.config.setConfigured(true);
+    this.logger.debug('configuration completed.');
   }
 
   /**
@@ -142,14 +143,14 @@ export class Releaser {
 
     let currentTag = this.updateLabelPrefix(this.getCurrentTag());
 
-    // checks if current tag from either package.json or config
-    // is present in repository, if not ask user to continue or abort
     if (!this.isTagPresent(currentTag)) {
       const answer = await this.prompt.confirm(
         `Tag ${currentTag} is not present in repository, continue?`,
       );
 
-      if (answer === false) throw new UserAbortedError();
+      if (answer === false) {
+        throw new UserAbortedError();
+      }
 
       const existingTags = this.cli.hasPrefix() ?
         this.gitExec.getAllTagsWithRegex(GitExecutorSync.prefixedValidSemVerRegex) :
@@ -350,6 +351,7 @@ export class Releaser {
           this.constructNewLabel(this.updateLabelPrefix(this.firstLabel), this.getBumpType()),
         );
       case BRANCH_STATUSES.NO_TAG:
+        // if package.json exist, we assume the version is valid
         if (this.config.isPackageJsonValid()) {
           return this.constructLabelFromPkgJson();
         }
@@ -440,8 +442,10 @@ export class Releaser {
    * @return {string}
    */
   private getBumpType(): string {
-    const type = this.cli.getRelease() === undefined ?
+    const type = this.cli.getRelease() === 'automatic' ?
       this.bumpFinder.getBumpType() : this.cli.getRelease();
+
+    this.logger.debug(`Bump type set to ${type}, with release type ${this.cli.getRelease()}`);
 
     if (this.gitExec.getCurrentBranchName() === this.config.getDevelopBranchName()) {
       return 'pre'.concat(type);
@@ -603,11 +607,17 @@ export class Releaser {
    * @return {Promise<void>}
    */
   private async checkReleaseOnInit(): Promise<void> {
-    if (typeof this.cli.getRelease() === 'string') {
+    const releaseType = this.cli.getRelease();
+
+    this.logger.debug(`release is set to ${releaseType}`);
+
+    if (releaseType === 'automatic') {
+      return;
+    } else if (typeof releaseType === 'string') {
       return;
     }
 
-    let answer = await this.prompt.list('What type of increment do you want?', [
+    const answer = await this.prompt.list('What type of increment do you want?', [
       'automatic',
       'major',
       'minor',
@@ -617,10 +627,7 @@ export class Releaser {
       'prepatch',
     ]);
 
-    if (answer === 'automatic') {
-      answer = null;
-    }
-
+    this.logger.debug(`setting release as ${answer}`);
     this.cli.setReleaseType(answer);
   }
 }

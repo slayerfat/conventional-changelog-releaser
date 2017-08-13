@@ -35,6 +35,15 @@ export abstract class AbstractMockWithResponses {
   public setResponse(method: string, operators: {[name: string]: string}, response: any) {
     this.responses.push({method, operators, response});
   }
+
+  public checkResponses() {
+    if (this.responses.length > 0) {
+      const message   = 'Some responses are still unused: ';
+      const responses = this.responses.map(data => data.operators.message);
+
+      throw new Error(message.concat(responses.join(' ')));
+    }
+  }
 }
 
 export interface IMockResponse {
