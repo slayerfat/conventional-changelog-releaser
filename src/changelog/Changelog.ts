@@ -33,26 +33,42 @@ export class Changelog {
   /**
    * Updates the changelog according to the preset, defaults to angular.
    *
-   * @param {string} preset Possible values: 'angular', 'atom', 'codemirror', 'ember',
-   * 'eslint', 'express', 'jquery', 'jscs', 'jshint'
-   * @param {boolean} append Should the log be appended to existing data.
+   * @param {object} options
+   * @param {string} options.preset Possible values:
+   *                                'angular', 'atom', 'codemirror', 'ember',
+   *                                'eslint', 'express', 'jquery', 'jscs', 'jshint'.
+   * @param {boolean} options.append Should the log be appended to existing data.
+   * @param {object} options.context
+   * @param {boolean} options.context.version The version version to use, defaults to pkg.json.
+   * @param {object} options.pkg
+   * @param {boolean} options.pkg.path The package.json file path, defaults to closest.
    */
-  public async update(preset = 'angular', append = true): Promise<void> {
+  public async update(options: {
+    append?: boolean;
+    context?: {version?: string};
+    pkg?: {path?: string};
+    preset?: string;
+  } = {
+    append: true,
+    preset: 'angular',
+  }): Promise<void> {
     // https://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options
-    const options: {flags?: string} = {};
+    const wsOptions: {flags?: string} = {};
 
-    if (append === true) {
-      options.flags = 'a';
+    if (options.append === true) {
+      wsOptions.flags = 'a';
     }
 
     return this.getFilePath().then(path => {
       return new Promise<void>((resolve, reject) => {
-        const changelogStream = createWriteStream(path, options);
+        const changelogStream = createWriteStream(path, {flags: wsOptions.flags});
         const onErrorCB       = (err) => reject(err);
 
         changelogStream.on('error', onErrorCB);
 
-        this.conLog({preset})
+        const {preset, append, context} = options;
+
+        this.conLog({preset, append}, context)
           .on('error', err => onErrorCB)
           .on('end', () => resolve())
           .pipe(changelogStream);

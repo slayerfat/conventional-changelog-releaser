@@ -127,7 +127,7 @@ describe('Changelog', () => {
       shell.touch('changelog.md');
       shell.exec('git add --all && git commit -m ":memo: Add changelog"');
 
-      changelog.update('atom').then(() => {
+      changelog.update({preset: 'atom'}).then(() => {
         const command = shell.cat('changelog.md') as any;
         expect(command.stdout).to.match(/Add changelog/);
         expect(command.stdout).to.not.match(/Features/);

@@ -478,8 +478,8 @@ export class Releaser {
   private async handleBumpLabelCommit(label: string): Promise<void> {
     return Promise.resolve()
       .then(() => this.updateChangelog(label))
-      .then(() => this.createTag(label))
-      .then(() => this.updatePkgJsonVersion(label));
+      .then(() => this.updatePkgJsonVersion(label))
+      .then(() => this.createTag(label));
   }
 
   /**
@@ -557,13 +557,20 @@ export class Releaser {
 
     return this.changelog.backup()
       .then(() => {
-        const preset       = this.cli.getChangelogPreset();
-        const shouldAppend = this.cli.isInAppendChangelog();
+        const preset = this.cli.getChangelogPreset();
+        const append = this.cli.isInAppendChangelog();
+        const path   = this.config.hasPackageJson() ?
+          this.config.getPackageJson().path : '';
 
         this.logger.debug(`Setting changelog with preset ${preset}`);
-        this.logger.debug(`Should append to changelog ${shouldAppend}`);
+        this.logger.debug(`Should append to changelog ${append}`);
 
-        return this.changelog.update(preset, shouldAppend);
+        return this.changelog.update({
+          append,
+          context: {version: label},
+          pkg:     {path},
+          preset,
+        });
       })
       .then(() => {
         if (this.cli.shouldCommit() === false) {
@@ -585,7 +592,6 @@ export class Releaser {
         });
       })
       .then(() => this.changelog.deleteFile({backup: true}));
-
   }
 
   /**
@@ -605,12 +611,31 @@ export class Releaser {
       return;
     }
 
-    const file       = this.config.getPackageJson();
-    file.pkg.version = this.updateLabelPrefix(label, false);
+    const file         = this.config.getPackageJson();
+    const updatedLabel = this.updateLabelPrefix(label, false);
+    file.pkg.version   = updatedLabel;
+    this.config.setPackageJsonVersion(updatedLabel);
 
     this.changelog.getFileExec()
-      .write(file.path + '/package.json', JSON.stringify(file.pkg))
-      .then(() => this.logger.info(`Package updated with version '${label}'.`));
+      .write(file.path, JSON.stringify(file.pkg, null, '  '))
+      .then(() => this.logger.info(`Package updated with version '${updatedLabel}'.`));
+
+    if (this.cli.shouldCommit() === false) {
+      this.logger.info(`Package updated, no commits made.`);
+
+      return;
+    }
+
+    const options = {
+      files:   {paths: [file.path]},
+      message: `chore(npm): update package.json to ${updatedLabel}`,
+    };
+
+    const results = this.gitExec.commit(options);
+
+    this.logger.debug('package.json commit results:');
+    this.logger.debug(results);
+    this.logger.info(`The package.json file was committed with message: '${options.message}'.`);
   }
 
   /**
