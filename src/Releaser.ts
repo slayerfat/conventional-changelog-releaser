@@ -98,7 +98,7 @@ export class Releaser {
     await this.syncSemVerVersions();
 
     if (this.config.isPackageJsonValid() || this.config.hasCurrentSemVer()) {
-      return await this.bump();
+      return this.bump();
     }
 
     throw new Error('Unknown config state.');
@@ -614,28 +614,31 @@ export class Releaser {
     const file         = this.config.getPackageJson();
     const updatedLabel = this.updateLabelPrefix(label, false);
     file.pkg.version   = updatedLabel;
-    this.config.setPackageJsonVersion(updatedLabel);
 
-    this.changelog.getFileExec()
+    return this.changelog.getFileExec()
       .write(file.path, JSON.stringify(file.pkg, null, '  '))
-      .then(() => this.logger.info(`Package updated with version '${updatedLabel}'.`));
+      .then(() => {
+        this.config.setPackageJsonVersion(updatedLabel);
 
-    if (this.cli.shouldCommit() === false) {
-      this.logger.info(`Package updated, no commits made.`);
+        this.logger.info(`Package updated with version '${updatedLabel}'.`);
 
-      return;
-    }
+        if (this.cli.shouldCommit() === false) {
+          this.logger.info(`Package updated, no commits made.`);
 
-    const options = {
-      files:   {paths: [file.path]},
-      message: `chore(npm): update package.json to ${updatedLabel}`,
-    };
+          return;
+        }
 
-    const results = this.gitExec.commit(options);
+        const options = {
+          files:   {paths: [file.path]},
+          message: `chore(npm): update package.json to ${updatedLabel}`,
+        };
 
-    this.logger.debug('package.json commit results:');
-    this.logger.debug(results);
-    this.logger.info(`The package.json file was committed with message: '${options.message}'.`);
+        const results = this.gitExec.commit(options);
+
+        this.logger.debug('package.json commit results:');
+        this.logger.debug(results);
+        this.logger.info(`The package.json file was committed with message: '${options.message}'.`);
+      });
   }
 
   /**

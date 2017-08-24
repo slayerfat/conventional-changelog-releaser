@@ -35,12 +35,15 @@ describe('Releaser CLI', function() {
   const loggingLogger = new LoggerMock();
   loggingLogger.setShouldLog(true);
 
+  const pkgJsonPath = shell.pwd().toString().concat('/.tmp/package.json');
+
   const messages = {
     branch:     'Is this repo using a develop branch?',
     branchName: 'Whats the develop branch name? [develop]',
     bumpType:   'What type of increment do you want?',
     noTag:      'No tags are found. Create first tag?',
     noValidTag: 'No valid semver tags found, continue?',
+    pkgMsg:     `Package.json found in ${pkgJsonPath}, is this file correct?`,
   };
 
   function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
@@ -48,9 +51,14 @@ describe('Releaser CLI', function() {
   }
 
   function makeNewPkgUpFileObject(
-    pkg  = {version: '1.0.0'},
-    path = shell.pwd().toString(),
+    pkg    = {version: '1.0.0'},
+    create = false,
+    path   = pkgJsonPath,
   ): IPkgUpResultObject {
+    if (create === true) {
+      shell.touch(path);
+    }
+
     return {length: 1, path, pkg};
   }
 
@@ -247,11 +255,9 @@ describe('Releaser CLI', function() {
 
   context('No tag but package.json is present', () => {
     let pkgUp;
-    let pkgMessage;
 
     beforeEach(() => {
-      pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
-      pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
+      pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
 
       prompt.setResponse('confirm', {message: messages.branch}, false);
       prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
@@ -259,7 +265,7 @@ describe('Releaser CLI', function() {
 
     describe('package.json found prompt', () => {
       it('should prompt user about file discovery', (done) => {
-        prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+        prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
         releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
         releaser.init().then(() => {
@@ -271,7 +277,7 @@ describe('Releaser CLI', function() {
       });
 
       it('should prompt user about file discovery and continue "no" option selected', (done) => {
-        prompt.setResponse('list', {message: pkgMessage}, 'No');
+        prompt.setResponse('list', {message: messages.pkgMsg}, 'No');
         prompt.setResponse('confirm', {message: messages.noValidTag}, false);
 
         releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
@@ -285,7 +291,7 @@ describe('Releaser CLI', function() {
       });
 
       it('should allow user to abort in file discovery', (done) => {
-        prompt.setResponse('list', {message: pkgMessage}, 'Abort');
+        prompt.setResponse('list', {message: messages.pkgMsg}, 'Abort');
 
         releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
 
@@ -299,11 +305,14 @@ describe('Releaser CLI', function() {
     });
 
     it('should bump to current package.json version', (done) => {
-      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
 
-      const pkgUp2  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '5.1.0'}));
+      pkgUp         = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}, true));
+      const file    = makeNewPkgUpFileObject({version: '5.1.0'}, true);
+      const pkgUp2  = makeNewPkgUpFunction(file);
       const prompt2 = new PromptMock();
-      prompt2.setResponse('list', {message: pkgMessage}, 'Yes');
+
+      prompt2.setResponse('list', {message: messages.pkgMsg}, 'Yes');
       prompt2.setResponse('list', {message: messages.bumpType}, 'automatic');
       prompt2.setResponse('confirm', {message: messages.branch}, false);
       prompt2.setResponse(
@@ -312,9 +321,9 @@ describe('Releaser CLI', function() {
         true,
       );
 
-      const pkgUp3  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '9.2.3'}));
+      const pkgUp3  = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '9.2.3'}, true));
       const prompt3 = new PromptMock();
-      prompt3.setResponse('list', {message: pkgMessage}, 'Yes');
+      prompt3.setResponse('list', {message: messages.pkgMsg}, 'Yes');
       prompt3.setResponse('confirm', {message: messages.branch}, false);
       prompt3.setResponse('list', {message: messages.bumpType}, 'automatic');
       prompt3.setResponse(
@@ -363,12 +372,11 @@ describe('Releaser CLI', function() {
 
   context('Tag and package present', () => {
     let pkgUp;
-    let pkgMessage;
 
     beforeEach(() => {
-      pkgUp      = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
-      pkgMessage = `Package.json found in ${shell.pwd().toString()}, is this file correct?`;
-      prompt.setResponse('list', {message: pkgMessage}, 'Yes');
+      pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
+
+      prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
       prompt.setResponse('confirm', {message: messages.branch}, false);
       prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
