@@ -368,6 +368,34 @@ describe('Releaser CLI', function() {
         })
         .catch(err => done(err));
     });
+
+    it('should update package.json version', (done) => {
+      prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
+
+      pkgUp    = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '87.0.0'}, true));
+      releaser = makeNewReleaser({fPrompt: prompt, pkgUp});
+
+      expect(gitExec.isTagPresent('v87.1.0')).to.be.false;
+
+      const fileExecutor = new FileExecutor();
+
+      releaser.init()
+        .then(() => fileExecutor.read('package.json'))
+        .then(file => JSON.parse(file))
+        .then(file => {
+          expect(gitExec.isTagPresent('v87.1.0')).to.be.true;
+          expect(file.version).to.be.equal('87.1.0');
+
+          shell.exec('touch something && git add --all && git commit -m "a commit"');
+
+          expect(gitExec.isTagPresent('v5.1.0')).to.be.false;
+          expect(gitExec.isTagPresent('v5.2.0')).to.be.false;
+          expect(() => prompt.checkResponses()).to.not.throw();
+
+          done();
+        })
+        .catch(err => done(err));
+    });
   });
 
   context('Tag and package present', () => {
