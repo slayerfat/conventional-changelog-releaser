@@ -449,7 +449,7 @@ describe('Releaser CLI', function() {
     });
 
     describe('package.json operations', () => {
-      let cli;
+      let cli: CliBootstrapMock;
       let fileExec;
 
       beforeEach(() => {
@@ -501,6 +501,30 @@ describe('Releaser CLI', function() {
 
             done();
           }).catch(err => done(err));
+      });
+
+      it('should check package.json even if configured but json flag enabled', done => {
+        cli.setFlag('forced', true);
+        cli.setFlag('json', true);
+
+        const config = new ConfigMock();
+        config.setConfigured(true);
+
+        prompt = new PromptMock();
+        prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
+        prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
+
+        expect(gitExec.isAnyTagPresent()).to.be.false;
+
+        makeNewReleaser({fPrompt: prompt, cli, pkgUp, config}).init()
+          .then(() => {
+            expect(gitExec.isTagPresent('v0.1.0')).to.be.false;
+            expect(gitExec.isTagPresent('v15.1.0')).to.be.true;
+
+            expect(() => prompt.checkResponses()).to.not.throw();
+          })
+          .then(() => done())
+          .catch(err => done(err));
       });
     });
   });

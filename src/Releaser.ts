@@ -118,12 +118,12 @@ export class Releaser {
 
     await this.checkReleaseOnInit();
 
-    if (this.config.isConfigured()) {
-      return this.logger.debug('Already configured, skipping default config.');
-    }
-
     if (!this.config.isPackageJsonExhausted()) {
       await this.setPackageJsonInConfig();
+    }
+
+    if (this.config.isConfigured()) {
+      return this.logger.debug('Already configured, skipping default config.');
     }
 
     await this.askUserAboutDevelopBranch();
@@ -679,12 +679,17 @@ export class Releaser {
    * @return {Promise<void>}
    */
   private async checkChangelogFile() {
+    this.logger.debug('starting changelog file check.');
+
     if (this.cli.isInLogMode() === false) {
+      this.logger.debug('Not in log mode, skipping.');
       return;
     }
 
     try {
-      await this.changelog.getFilePath();
+      const path = await this.changelog.getFilePath();
+
+      this.logger.debug(`file found with path ${path}.`);
     } catch (err) {
       if (err instanceof ChangelogNotFoundError) {
         const answer = await this.prompt.confirm(
@@ -694,6 +699,8 @@ export class Releaser {
         if (answer === false) {
           throw new UserAbortedError();
         }
+
+        this.logger.debug('creating new changelog file.');
 
         await this.changelog.createNew();
       }
