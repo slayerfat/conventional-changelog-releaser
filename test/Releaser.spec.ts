@@ -665,10 +665,7 @@ describe('Releaser CLI', function() {
       releaser = makeNewReleaser({fPrompt: prompt, cli});
 
       releaser.init().then(() => {
-        const status = shell.exec('git status') as any;
-
         expect(shell.cat('changelog.md').toString().length).to.be.greaterThan(0);
-        expect(status.toString()).to.match(/nothing to commit, working directory clean/);
         expect(gitExec.isAnyTagPresent()).to.be.true;
         expect(gitExec.isTagPresent('v0.1.0')).to.be.true;
         expect(shell.test('-e', 'original.changelog.md')).to.be.false;
