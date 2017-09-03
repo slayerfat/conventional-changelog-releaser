@@ -11,6 +11,7 @@ import {readPkgUp} from './others/types';
 import {resolve as pathResolve, dirname, relative, sep} from 'path';
 import {UserAbortedError} from './exceptions/UserAbortedError';
 import {Changelog} from './changelog/Changelog';
+import {ChangelogNotFoundError} from './exceptions/ChangelogNotFoundError';
 
 const enum BRANCH_STATUSES {
   FIRST_TAG   = 1,
@@ -126,6 +127,7 @@ export class Releaser {
     }
 
     await this.askUserAboutDevelopBranch();
+    await this.checkChangelogFile();
 
     this.config.setConfigured(true);
     this.logger.debug('configuration completed.');
@@ -669,5 +671,32 @@ export class Releaser {
 
     this.logger.debug(`setting release as ${answer}`);
     this.cli.setReleaseType(answer);
+  }
+
+  /**
+   * Check if the changelog file exists, ask user to create if it doesn't.
+   *
+   * @return {Promise<void>}
+   */
+  private async checkChangelogFile() {
+    if (this.cli.isInLogMode() === false) {
+      return;
+    }
+
+    try {
+      await this.changelog.getFilePath();
+    } catch (err) {
+      if (err instanceof ChangelogNotFoundError) {
+        const answer = await this.prompt.confirm(
+          'changelog.md file not found in this repo, create?',
+        );
+
+        if (answer === false) {
+          throw new UserAbortedError();
+        }
+
+        await this.changelog.createNew();
+      }
+    }
   }
 }

@@ -20,7 +20,6 @@ import {UserAbortedError} from '../src/exceptions/UserAbortedError';
 import {IPkgUpResultObject} from '../src/config/IPkgResultObject';
 import {FileExecutor} from '../src/exec/FileExecutor';
 import {Changelog} from '../src/changelog/Changelog';
-import {ChangelogNotFoundError} from '../src/exceptions/ChangelogNotFoundError';
 
 // chai.expect shows as an unused expression
 // tslint:disable:no-unused-expression
@@ -38,12 +37,13 @@ describe('Releaser CLI', function() {
   const pkgJsonPath = shell.pwd().toString().concat('/.tmp/package.json');
 
   const messages = {
-    branch:     'Is this repo using a develop branch?',
-    branchName: 'Whats the develop branch name? [develop]',
-    bumpType:   'What type of increment do you want?',
-    noTag:      'No tags are found. Create first tag?',
-    noValidTag: 'No valid semver tags found, continue?',
-    pkgMsg:     `Package.json found in ${pkgJsonPath}, is this file correct?`,
+    branch:      'Is this repo using a develop branch?',
+    branchName:  'Whats the develop branch name? [develop]',
+    bumpType:    'What type of increment do you want?',
+    noChangelog: 'changelog.md file not found in this repo, create?',
+    noTag:       'No tags are found. Create first tag?',
+    noValidTag:  'No valid semver tags found, continue?',
+    pkgMsg:      `Package.json found in ${pkgJsonPath}, is this file correct?`,
   };
 
   function makeNewPkgUpFunction(file?: IPkgUpResultObject) {
@@ -528,22 +528,43 @@ describe('Releaser CLI', function() {
       prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
 
-    it('should throw error and abort if no changelog is found', (done) => {
+    it('should ask user to create if no changelog is found', (done) => {
       shell.rm('changelog.md');
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
+      prompt.setResponse('confirm', {message: messages.noChangelog}, true);
 
       releaser = makeNewReleaser({fPrompt: prompt, cli});
 
+      expect(shell.test('-e', 'changelog.md')).to.be.false;
+
       releaser.init()
-        .then(() => done(new Error()))
-        .catch(err => {
-          expect(err.message).to.equal(ChangelogNotFoundError.getMessage());
-          expect(gitExec.isAnyTagPresent()).to.be.false;
+        .then(() => {
+          expect(shell.test('-e', 'changelog.md')).to.be.true;
           expect(() => prompt.checkResponses()).to.not.throw();
 
           done();
-        });
+        })
+        .catch(err => done(err));
+    });
+
+    it('should abort if user declines changelog creation', (done) => {
+      shell.rm('changelog.md');
+
+      prompt.setResponse('confirm', {message: messages.noChangelog}, false);
+
+      releaser = makeNewReleaser({fPrompt: prompt, cli});
+
+      expect(shell.test('-e', 'changelog.md')).to.be.false;
+
+      releaser.init().catch(err => {
+        expect(shell.test('-e', 'changelog.md')).to.be.false;
+        expect(err.message).to.equal(UserAbortedError.getMessage());
+
+        expect(() => prompt.checkResponses()).to.not.throw();
+
+        done();
+      });
     });
 
     it('should not abort if log flag is false', (done) => {

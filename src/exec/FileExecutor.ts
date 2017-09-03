@@ -61,7 +61,7 @@ export class FileExecutor {
     encoding?: string;
     mode?: number;
     flag?: string;
-  }) {
+  }): Promise<void> {
     return new Promise((resolve, reject) => {
       writeFile(file, data, options, (err) => {
         if (err) {

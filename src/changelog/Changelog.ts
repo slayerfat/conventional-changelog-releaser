@@ -184,4 +184,15 @@ export class Changelog {
       Changelog.handleChangelogPathError(err);
     }
   }
+
+  /**
+   * Creates a new changelog file with optional data.
+   *
+   * @param {string} path
+   * @param {string} data
+   * @return {Promise<void>}
+   */
+  public async createNew(path = 'changelog.md', data = ''): Promise<void> {
+    return this.fileExec.write(path, data);
+  }
 }
