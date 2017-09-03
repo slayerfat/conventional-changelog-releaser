@@ -26,7 +26,7 @@ import {ChangelogNotFoundError} from '../src/exceptions/ChangelogNotFoundError';
 // tslint:disable:no-unused-expression
 
 describe('Releaser CLI', function() {
-  this.slow(2000);
+  this.slow(4000);
   let releaser: Releaser;
   let prompt: PromptMock;
 
