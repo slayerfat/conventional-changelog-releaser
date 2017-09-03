@@ -497,7 +497,7 @@ export class Releaser {
     this.config.setCurrentSemVer(label);
 
     if (this.cli.shouldCommit() === false) {
-      return this.logger.info(`Bump to ${label} completed, not committing.`);
+      return this.logger.info(`Bump to ${label} completed, no commits made.`);
     }
 
     if (!this.semver.valid(label)) {
@@ -506,7 +506,8 @@ export class Releaser {
 
     const updatedLabel = this.updateLabelPrefix(label);
 
-    this.logger.info(`Creating new tag as '${updatedLabel}'.`);
+    this.logger.debug(`Creating new tag as '${updatedLabel}'.`);
+    this.logger.info(`Bump to ${updatedLabel} completed.`);
 
     return this.gitExec.createTag(updatedLabel);
   }
@@ -576,7 +577,7 @@ export class Releaser {
       })
       .then(() => {
         if (this.cli.shouldCommit() === false) {
-          return this.logger.info(`Bump to ${label} completed, no commits made.`);
+          return this.logger.debug(`Bump to ${label} completed, no commits made.`);
         }
 
         // commit the changes
@@ -590,7 +591,7 @@ export class Releaser {
 
           this.logger.debug('changelog commit results:', results);
           this.logger.debug(results);
-          this.logger.info(`Changelog committed with message: '${options.message}'.`);
+          this.logger.info(`Changelog updated.`);
         });
       })
       .then(() => this.changelog.deleteFile({backup: true}));
@@ -622,7 +623,8 @@ export class Releaser {
       .then(() => {
         this.config.setPackageJsonVersion(updatedLabel);
 
-        this.logger.info(`Package updated with version '${updatedLabel}'.`);
+        this.logger.debug(`Package updated with version '${updatedLabel}'.`);
+        this.logger.info(`Package updated.`);
 
         if (this.cli.shouldCommit() === false) {
           this.logger.info(`Package updated, no commits made.`);
@@ -639,7 +641,6 @@ export class Releaser {
 
         this.logger.debug('package.json commit results:');
         this.logger.debug(results);
-        this.logger.info(`The package.json file was committed with message: '${options.message}'.`);
       });
   }
 
