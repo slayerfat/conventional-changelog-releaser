@@ -26,7 +26,7 @@ import {ChangelogNotFoundError} from '../src/exceptions/ChangelogNotFoundError';
 // tslint:disable:no-unused-expression
 
 describe('Releaser CLI', function() {
-  this.slow(4000);
+  this.slow(10000);
   let releaser: Releaser;
   let prompt: PromptMock;
 
@@ -363,9 +363,8 @@ describe('Releaser CLI', function() {
         .then(() => {
           expect(gitExec.isTagPresent('v9.3.0')).to.be.true;
           expect(() => prompt3.checkResponses()).to.not.throw();
-
-          done();
         })
+        .then(() => done())
         .catch(err => done(err));
     });
 
