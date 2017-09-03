@@ -25,7 +25,7 @@ import {Changelog} from '../src/changelog/Changelog';
 // tslint:disable:no-unused-expression
 
 describe('Releaser CLI', function() {
-  this.slow(10000);
+  this.slow(4000);
   let releaser: Releaser;
   let prompt: PromptMock;
 
@@ -96,6 +96,9 @@ describe('Releaser CLI', function() {
 
     releaser = makeNewReleaser({});
     prompt   = new PromptMock();
+
+    prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
+    prompt.setResponse('confirm', {message: messages.branch}, false);
   });
 
   afterEach(() => shell.cd('../'));
@@ -107,11 +110,6 @@ describe('Releaser CLI', function() {
   });
 
   context('No tag and no package.json present', () => {
-    beforeEach(() => {
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-    });
-
     it('should bump to minor (v0.1.0) if user continues', done => {
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
@@ -157,11 +155,6 @@ describe('Releaser CLI', function() {
   });
 
   context('Tag and no package.json present', () => {
-    beforeEach(() => {
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-    });
-
     it('should ask user about valid non-prefixed semver with prefix flag as true', done => {
       gitExec.createTag('0.1.0');
 
@@ -258,9 +251,6 @@ describe('Releaser CLI', function() {
 
     beforeEach(() => {
       pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '3.0.0'}));
-
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
 
     describe('package.json found prompt', () => {
@@ -404,8 +394,6 @@ describe('Releaser CLI', function() {
       pkgUp = makeNewPkgUpFunction(makeNewPkgUpFileObject({version: '15.0.0'}));
 
       prompt.setResponse('list', {message: messages.pkgMsg}, 'Yes');
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
 
     it('should abort if no new commits present since last valid semver tag', (done) => {
@@ -523,9 +511,6 @@ describe('Releaser CLI', function() {
     beforeEach(() => {
       cli = new CliBootstrapMock();
       cli.setFlag('log', true);
-
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
 
     it('should ask user to create if no changelog is found', (done) => {
@@ -677,8 +662,6 @@ describe('Releaser CLI', function() {
 
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
-      prompt.setResponse('confirm', {message: messages.branch}, false);
-      prompt.setResponse('list', {message: messages.bumpType}, 'automatic');
     });
 
     it('should commit on bump as default', done => {
@@ -713,6 +696,8 @@ describe('Releaser CLI', function() {
 
   describe('configuration related operations', () => {
     beforeEach(() => {
+      prompt = new PromptMock();
+
       prompt.setResponse('confirm', {message: messages.noValidTag}, true);
       prompt.setResponse('confirm', {message: messages.noTag}, true);
     });
