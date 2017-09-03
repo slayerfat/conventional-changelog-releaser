@@ -11,12 +11,10 @@ import {makeFreshGitDir} from '../helpers/makeFreshGitDir';
 describe('Changelog', () => {
   let changelog: Changelog;
 
-  shell.config.silent = false;
-
   beforeEach(() => {
     changelog = new Changelog(new FileExecutor());
 
-    makeFreshGitDir({silent: false});
+    makeFreshGitDir();
   });
 
   afterEach(() => {
