@@ -12,6 +12,7 @@ install:
   - npm install
 
 before_script:
+  - npm i -g npm@5.4.1
   - git config --global user.email "travis@test.com"
   - git config --global user.name "Travis"
 
