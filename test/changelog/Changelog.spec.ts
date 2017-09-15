@@ -22,9 +22,7 @@ describe('Changelog', () => {
     shell.rm('-rf', '.tmp');
   });
 
-  it('should be constructed', () => {
-    expect(changelog).to.be.ok;
-  });
+  context('constructor', () => it('should be constructed', () => expect(changelog).to.be.ok));
 
   describe('backup', () => {
     it('should throw ChangelogNotFoundError if path not found', (done) => {

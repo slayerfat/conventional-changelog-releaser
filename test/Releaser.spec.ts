@@ -105,9 +105,7 @@ describe('Releaser CLI', function() {
 
   after(() => shell.rm('-rf', '.tmp'));
 
-  it('should be constructed', () => {
-    expect(releaser).to.be.ok;
-  });
+  context('constructor', () => it('should be constructed', () => expect(releaser).to.be.ok));
 
   context('No tag and no package.json present', () => {
     it('should bump to minor (v0.1.0) if user continues', done => {
@@ -322,9 +320,9 @@ describe('Releaser CLI', function() {
         true,
       );
 
-      releaser        = makeNewReleaser({fPrompt: prompt, pkgUp});
-      const releaser2 = makeNewReleaser({fPrompt: prompt2, pkgUp: pkgUp2});
-      const releaser3 = makeNewReleaser({fPrompt: prompt3, pkgUp: pkgUp3});
+      releaser        = makeNewReleaser({fPrompt: prompt, pkgUp, logger: loggingLogger});
+      const releaser2 = makeNewReleaser({fPrompt: prompt2, pkgUp: pkgUp2, logger: loggingLogger});
+      const releaser3 = makeNewReleaser({fPrompt: prompt3, pkgUp: pkgUp3, logger: loggingLogger});
 
       expect(gitExec.isTagPresent('v3.0.0')).to.be.false;
 

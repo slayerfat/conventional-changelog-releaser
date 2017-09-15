@@ -18,9 +18,7 @@ describe('GitExecutorSync', () => {
 
   after(() => shell.rm('-rf', '.tmp'));
 
-  it('should be constructed', () => {
-    expect(exec).to.be.ok;
-  });
+  context('constructor', () => it('should be constructed', () => expect(exec).to.be.ok));
 
   describe('isTagPresent', () => {
     it('should be false if no tag present', () => {
