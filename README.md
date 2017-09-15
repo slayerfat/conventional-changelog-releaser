@@ -1,6 +1,6 @@
 # conventional-changelog-releaser
 
-[![Build Status](https://travis-ci.org/slayerfat/conventional-changelog-releaser.svg?branch=master)](https://travis-ci.org/slayerfat/conventional-changelog-releaser)
+[![Build Status](https://travis-ci.org/slayerfat/releaser.svg?branch=master)](https://travis-ci.org/slayerfat/releaser)
 [![Coverage Status](https://coveralls.io/repos/github/slayerfat/conventional-changelog-releaser/badge.svg?branch=master)](https://coveralls.io/github/slayerfat/conventional-changelog-releaser?branch=master)
 
 ## Tests
